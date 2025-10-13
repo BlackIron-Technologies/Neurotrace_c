@@ -1,8 +1,6 @@
-# <img src="media/neurotrace-icon-light.svg#gh-light-mode-only" alt="NeuroTrace logo" height="62"><img src="media/neurotrace-icon-dark.svg#gh-dark-mode-only" alt="NeuroTrace logo" height="62"> NeuroTrace
- 
- ### Local Reasoning Versioning for Developers
- 
- > Your second brain in VS Code. Reasoning, notes, tasks and more linked to your code, stored 100% offline and secure. 
+# <img src="media/neurotrace-icon.png" alt="NeuroTrace logo" height="62"> NeuroTrace
+
+### Local Reasoning Versioning for Developers > Your second brain in VS Code. Reasoning, notes, tasks and more linked to your code, stored 100% offline and secure. 
  
  ---
  
@@ -58,12 +56,17 @@ For maximum transparency, all security-critical code is open source in our [GitH
 1.  **Install from Marketplace**
     - Search for "NeuroTrace" in the Extensions panel (`Ctrl+Shift+X`).
     - Click **Install**.
+    - **Note:** The extension includes an AI model (all-MiniLM-L6-v2) and dependencies for semantic search, making the download larger. This is a one-time download and enables powerful offline AI features.
 
 2.  **Initialize in Your Workspace**
     - The NeuroTrace sidebar appears automatically after installation.
     - Click the "Initialize Database" button in the sidebar. This will create the local `.neurotrace` folder.
 
-3.  **Add Your First Thought**
+3.  **Add .neurotrace to .gitignore (Recommended)**
+    - To prevent accidentally sharing your encrypted database with others, add `.neurotrace/` to your `.gitignore` file.
+    - This ensures your personal thoughts and reasoning data remain private.
+
+4.  **Add Your First Thought**
     - Open any code file.
     - Select your Snipet
     - Press `Alt+N` **or click the "+" button** in the NeuroTrace sidebar.
@@ -72,6 +75,22 @@ For maximum transparency, all security-critical code is open source in our [GitH
    More details in [walkthrough/init.md](walkthrough/init.md)
 
 🎉 Done! Your reasoning is now versioned locally.
+
+---
+
+## 🏗️ Backend Architecture
+
+NeuroTrace uses a **platform-aware backend system** that automatically detects your operating system:
+
+### Windows, Linux & macOS
+- ✅ **compiled executable included**
+- ✅ No Python installation required
+- ✅ Works out of the box
+
+### Key Technologies
+- **SQLCipher3:** Encrypted database with AES-256
+- **FAISS:** High-speed semantic search engine
+- **Sentence Transformers:** AI-powered embeddings (all-MiniLM-L6-v2)
 
 ---
 
@@ -100,13 +119,44 @@ All account management is handled through the **Advanced Settings** panel for a 
 
 ---
 
-## 💬 Support & Community
+## � Quick Troubleshooting
+
+### Subscription Status Not Updating?
+
+If your premium subscription status isn't reflecting correctly in the extension:
+
+**Quick Fix:**
+1. **Sign out and sign back in:**
+   - Open Advanced Settings (`Ctrl+Shift+P` → "NeuroTrace: Open Advanced Settings")
+   - Click "Sign Out"
+   - Click "Sign in with GitHub" and complete the login process
+
+**Alternative:**
+- Close and reopen the Advanced Settings panel
+- The extension will automatically sync your latest subscription status
+
+This usually resolves sync issues between your account and the extension.
+
+### Database Corrupted or Inaccessible?
+
+If you encounter database errors, corruption, or can't access your thoughts:
+
+**Reset Database:**
+1. **Close VS Code completely**
+2. **Delete the `.neurotrace` folder** from your workspace root
+3. **Restart VS Code** and open your workspace
+4. **Re-initialize:** Click "Initialize Database" in the NeuroTrace sidebar
+
+**⚠️ Warning:** This will permanently delete all your thoughts and data. Make sure to export any important thoughts first using the export feature.
+
+---
+
+## �💬 Support & Community
 
 Need help or want to connect with other NeuroTrace users?
 
-- 💬 **Discord**: [Join our community](https://discord.gg/your-discord-invite)
-- 🐦 **X (Twitter)**: [@NeuroTraceVsc](https://x.com/NeuroTraceVsc)
-- 📧 **Email**: neuro_support@blackironhq.com
+- **X (Twitter)**: [@NeuroTraceVsc](https://x.com/NeuroTraceVsc)
+- **Email**: neuro_support@blackironhq.com
 
 We're here to help! Feel free to reach out with questions, suggestions, or feedback.
 
