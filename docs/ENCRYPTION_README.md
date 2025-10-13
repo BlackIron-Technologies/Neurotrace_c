@@ -81,19 +81,6 @@ Migrates an encrypted database to unencrypted format.
 ✅ **Atomic operations** - Original file replaced only on success  
 ✅ **Open source** - Full code available for audit  
 
-## Reporting Security Issues
-
-If you discover a security vulnerability in this encryption module:
-
-1. **DO NOT** open a public GitHub issue
-2. Email: security@blackiron.tech
-3. Include:
-   - Description of the vulnerability
-   - Steps to reproduce
-   - Potential impact
-   - Suggested fix (if any)
-
-We take security seriously and will respond within 48 hours.
 
 ## Questions & Support
 
