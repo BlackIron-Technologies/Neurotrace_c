@@ -1,0 +1,30 @@
+{
+    "name": "anonymous-telemetry-service",
+    "version": "1.0.0",
+    "description": "Anonymous telemetry collection service for VS Code extensions",
+    "main": "telemetry_server.js",
+    "scripts": {
+        "start": "node telemetry_server.js",
+        "dev": "nodemon telemetry_server.js",
+        "test": "echo \"No tests specified\" && exit 0"
+    },
+    "dependencies": {
+        "express": "^4.18.2",
+        "cors": "^2.8.5"
+    },
+    "devDependencies": {
+        "nodemon": "^3.0.1"
+    },
+    "keywords": [
+        "telemetry",
+        "analytics",
+        "privacy",
+        "vscode-extension",
+        "anonymous"
+    ],
+    "author": "Anonymous Developer",
+    "license": "MIT",
+    "engines": {
+        "node": ">=16.0.0"
+    }
+}
