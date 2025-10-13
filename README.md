@@ -1,4 +1,4 @@
-# <img src="media/neurotrace-icon.png" alt="NeuroTrace logo" height="62"> NeuroTrace
+# <img src="media/neurotrace-icon.svg" alt="NeuroTrace logo" height="62"> NeuroTrace
 
 ### Local Reasoning Versioning for Developers > Your second brain in VS Code. Reasoning, notes, tasks and more linked to your code, stored 100% offline and secure. 
  
