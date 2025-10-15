@@ -1,4 +1,4 @@
-# <img src="media/neurotrace-icon.svg" alt="NeuroTrace logo" height="62"> NeuroTrace
+# NeuroTrace
 
 ### Local Reasoning Versioning for Developers > Your second brain in VS Code. Reasoning, notes, tasks and more linked to your code, stored 100% offline and secure. 
  
@@ -26,7 +26,7 @@
 
 ## 🆓 Free vs Premium
 
-| Feature                                                    | Free Plan (Forever) | Premium (US$7.99/mo) |
+| Feature                                                    | Free Plan (Forever) | Premium (US$9.99/mo) |
 | ---------------------------------------------------------- | ------------------- | -------------------- |
 | Local Reasoning Log                                        | ✅                   | ✅                    |
 | Inline Code Decorations                                    | ❌                   | ✅                    |
@@ -56,7 +56,7 @@ For maximum transparency, all security-critical code is open source in our [GitH
 1.  **Install from Marketplace**
     - Search for "NeuroTrace" in the Extensions panel (`Ctrl+Shift+X`).
     - Click **Install**.
-    - **Note:** The extension includes an AI model (all-MiniLM-L6-v2) and dependencies for semantic search, making the download larger. This is a one-time download and enables powerful offline AI features.
+    - **Note:** When you first open the NeuroTrace sidebar, click the download button to get the AI backend (up to 250MB) including the AI model (all-MiniLM-L6-v2) and general dependencies for extension functions. This is a one-time download that enables powerful offline AI features.
 
 2.  **Initialize in Your Workspace**
     - The NeuroTrace sidebar appears automatically after installation.
@@ -83,7 +83,7 @@ For maximum transparency, all security-critical code is open source in our [GitH
 NeuroTrace uses a **platform-aware backend system** that automatically detects your operating system:
 
 ### Windows, Linux & macOS
-- ✅ **compiled executable included**
+- ✅ **Download platform-specific executable on first use**
 - ✅ No Python installation required
 - ✅ Works out of the box
 
