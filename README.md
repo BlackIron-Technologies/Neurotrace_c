@@ -83,7 +83,7 @@ For maximum transparency, all security-critical code is open source in our [GitH
 NeuroTrace uses a **platform-aware backend system** that automatically detects your operating system:
 
 ### Windows, Linux & macOS
-- ✅ **compiled executable included**
+- ✅ **compiled executable download**
 - ✅ No Python installation required
 - ✅ Works out of the box
 
