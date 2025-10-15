@@ -26,7 +26,7 @@
 
 ## 🆓 Free vs Premium
 
-| Feature                                                    | Free Plan (Forever) | Premium (US$7.99/mo) |
+| Feature                                                    | Free Plan (Forever) | Premium (US$9.99/mo) |
 | ---------------------------------------------------------- | ------------------- | -------------------- |
 | Local Reasoning Log                                        | ✅                   | ✅                    |
 | Inline Code Decorations                                    | ❌                   | ✅                    |
