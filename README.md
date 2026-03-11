@@ -1,157 +1,157 @@
 # NeuroTrace
 
-### Local Reasoning Versioning for Developers > Your second brain in VS Code. Reasoning, notes, tasks and more linked to your code, stored 100% offline and secure. 
- 
- ---
- 
- ## ✨ What it looks like
- 
- ### Sidebar with Thoughts
- 
- ![Sidebar](media/sidebar-screenshot.png)
- 
- ### Interactive Thought Graph
- 
- ![Graph](media/graph-screenshot.png)
- 
- ---
- 
- ## 🚀 Why NeuroTrace?
- 
- * Capture **hypotheses, decisions, insights, and tasks** right next to your code.
- * **Stay secure:** all reasoning is stored locally and encrypted by default.
- * **Boost productivity:** semantic search and graph visualization help you see patterns others miss.
- * Works **100% offline** — no cloud, no leaks, no distractions.
+### Context Memory for AI-Assisted Coding
 
+NeuroTrace is a local-first memory system for developers inside of your IDE.
+Capture decisions, insights, hypotheses, and tasks linked to your code, then retrieve them later through search, graph exploration, and MCP-compatible tooling.
 
-## 🆓 Free vs Premium
-
-| Feature                                                    | Free Plan (Forever) | Premium (US$9.99/mo) |
-| ---------------------------------------------------------- | ------------------- | -------------------- |
-| Local Reasoning Log                                        | ✅                   | ✅                    |
-| Inline Code Decorations                                    | ❌                   | ✅                    |
-| Thought Limit                                              | ⚠️ **45/month**      | ✅ **Unlimited**      |
-| Text Search                                                | ✅                   | ✅                    |
-| Semantic Search (all-MiniLM-L6-v2 of SentenceTransformers) | ❌                   | ✅                    |
-| Related Thought Suggestions                                | ❌                   | ✅                    |
-| Interactive Thought Graph                                  | ❌                   | ✅                    |
-| Encrypted Storage (AES-256)                                | ✅                   | ✅                    |
-| Works Offline                                              | ✅                   | ✅                    |
+Perfect for: architecture decisions, debugging logs, feature planning, technical journaling, and long-running project context.
 
 ---
 
-## 🔒 Privacy & Security by Design
+## ✨ What It Looks Like
 
-For maximum transparency, all security-critical code is open source in our [GitHub repository](https://github.com/BlackIron-Technologies/Neurotrace_c). You can verify that our privacy claims match our code.
+### Sidebar with Thoughts
 
-* **100% Local:** Everything stays on your machine
-* **Encrypted Storage:** SQLite + SQLCipher3 (AES-256 at rest)
-* **Anonymous Telemetry:** Optional usage stats
-* **Works Offline:** No cloud required
+![Sidebar](media/sidebar-screenshot.png)
 
----
+### Interactive Thought Graph
 
-### 🛠️ Installation & Usage
-
-1.  **Install from Marketplace**
-    - Search for "NeuroTrace" in the Extensions panel (`Ctrl+Shift+X`).
-    - Click **Install**.
-    - **Note:** When you first open the NeuroTrace sidebar, click the download button to get the AI backend (up to 250MB) including the AI model (all-MiniLM-L6-v2) and general dependencies for extension functions. This is a one-time download that enables powerful offline AI features.
-
-2.  **Initialize in Your Workspace**
-    - The NeuroTrace sidebar appears automatically after installation.
-    - Click the "Initialize Database" button in the sidebar. This will create the local `.neurotrace` folder.
-
-3.  **Add .neurotrace to .gitignore (Recommended)**
-    - To prevent accidentally sharing your encrypted database with others, add `.neurotrace/` to your `.gitignore` file.
-    - This ensures your personal thoughts and reasoning data remain private.
-
-4.  **Add Your First Thought**
-    - Open any code file.
-    - Select your Snipet
-    - Press `Alt+N` **or click the "+" button** in the NeuroTrace sidebar.
-    - Fill in your idea and press Enter. You're all set!
- 
-   More details in [walkthrough/init.md](walkthrough/init.md)
-
-🎉 Done! Your reasoning is now versioned locally.
+![Graph](media/graph-screenshot.png)
 
 ---
 
-## 🏗️ Backend Architecture
+## 🚀 Why NeuroTrace?
 
-NeuroTrace uses a **platform-aware backend system** that automatically detects your operating system:
-
-### Windows, Linux & macOS
-- ✅ **Download platform-specific executable on first use**
-- ✅ No Python installation required
-- ✅ Works out of the box
-
-### Key Technologies
-- **SQLCipher3:** Encrypted database with AES-256
-- **FAISS:** High-speed semantic search engine
-- **Sentence Transformers:** AI-powered embeddings (all-MiniLM-L6-v2)
+- Capture structured memory where the work happens.
+- Link thoughts to real files, lines, and snippets.
+- Search by text and semantic meaning.
+- Visualize relationships in an interactive graph.
+- Keep everything local-first and offline-friendly.
 
 ---
 
-## ✨ Premium Features & Account Management
+## � Built for AI Agents
 
-### Accessing Premium Features
+NeuroTrace works as persistent memory for coding agents.
 
-To unlock premium features like unlimited thoughts, semantic search, and the interactive thought graph:
+Instead of losing context between sessions, agents can search previous decisions, record new insights, and build on existing knowledge automatically.
 
-1. **Open Advanced Settings:**
-   - Use the Command Palette (`Ctrl+Shift+P`)
-   - Run "NeuroTrace: Open Advanced Settings"
-   - Or click the settings button in the NeuroTrace sidebar
+**A typical agent workflow:**
 
-2. **Sign in with GitHub:**
-   - In Advanced Settings, click "Sign in with GitHub"
-   - Complete the OAuth flow in your browser
-   - Return to VS Code - you'll be automatically signed in
+1. Agent receives a task.
+2. Searches NeuroTrace for prior decisions and related context.
+3. Works with full project history available.
+4. Records the outcome as a structured thought.
+5. Links it to related thoughts in the graph.
 
-3. **Manage your account:**
-   - View your authentication status
-   - Subscribe to premium features
-   - Sign out when needed
+NeuroTrace exposes its full API through MCP-compatible tools:
 
-All account management is handled through the **Advanced Settings** panel for a clean, centralized experience.
+- `addThought` / `editThought` / `deleteThought` — manage structured thoughts
+- `searchThoughts` / `semanticSearch` — find by keyword or meaning
+- `suggestRelated` — discover connections
+- `addRelation` / `deleteRelation` — link ideas explicitly
+- `getGraphData` / `getGraphInsights` — read the knowledge graph
+- `getDatabaseStatus` — check workspace state
 
----
-
-## � Quick Troubleshooting
-
-### Subscription Status Not Updating?
-
-If your premium subscription status isn't reflecting correctly in the extension:
-
-**Quick Fix:**
-1. **Sign out and sign back in:**
-   - Open Advanced Settings (`Ctrl+Shift+P` → "NeuroTrace: Open Advanced Settings")
-   - Click "Sign Out"
-   - Click "Sign in with GitHub" and complete the login process
-
-**Alternative:**
-- Close and reopen the Advanced Settings panel
-- The extension will automatically sync your latest subscription status
-
-This usually resolves sync issues between your account and the extension.
-
-### Database Corrupted or Inaccessible?
-
-If you encounter database errors, corruption, or can't access your thoughts:
-
-**Reset Database:**
-1. **Close VS Code completely**
-2. **Delete the `.neurotrace` folder** from your workspace root
-3. **Restart VS Code** and open your workspace
-4. **Re-initialize:** Click "Initialize Database" in the NeuroTrace sidebar
-
-**⚠️ Warning:** This will permanently delete all your thoughts and data. Make sure to export any important thoughts first using the export feature.
+NeuroTrace ships with pre-configured agent instructions (`.github/copilot-instructions.md`) so agents know how to use the memory system out of the box.
 
 ---
 
-## �💬 Support & Community
+## �🧠 Thought Types
+
+NeuroTrace supports structured thought types for better long-term memory:
+
+- `hypothesis` for assumptions to validate
+- `decision` for final technical choices
+- `insight` for discoveries and learnings
+- `task` for follow-up work and debt
+- `discard` for rejected approaches
+- `note` for general context
+
+---
+
+## 🔒 Privacy and Security by Design
+
+For transparency, security-critical code is open source in our [GitHub repository](https://github.com/BlackIron-Technologies/Neurotrace_c).
+
+- 100% local-first storage
+- Encrypted database support (SQLCipher3, AES-256 at rest)
+- Optional anonymous telemetry
+- Works offline
+
+---
+
+## 🛠️ Installation and First Use
+
+1. Install from Marketplace
+- Search for NeuroTrace in the Extensions panel (`Ctrl+Shift+X`).
+- Click Install.
+
+2. Open the NeuroTrace sidebar
+- On first use, download the platform backend when prompted.
+- This one-time download includes the local AI/search runtime.
+
+3. Initialize your workspace database
+- Click Initialize Database in the sidebar.
+- NeuroTrace will create a local `.neurotrace` directory in your workspace.
+
+4. Add your first thought
+- Open a code file.
+- Select a snippet.
+- Press `Alt+N` or click `+` in the sidebar.
+- Save your note.
+
+More details: [walkthrough/init.md](walkthrough/init.md)
+
+---
+
+## 🏗️ Backend Distribution
+
+NeuroTrace downloads platform-specific backend executables from GitHub Releases.
+
+Expected release assets:
+
+- `neurotrace-windows.zip`
+- `neurotrace-linux.zip`
+- `neurotrace-macos.zip`
+
+Expected binaries inside extracted content:
+
+- Windows: `neurotrace.exe`
+- Linux: `neurotrace`
+- macOS: `neurotrace`
+
+---
+
+## 🧩 Core Technologies
+
+- SQLCipher3 for encrypted local storage
+- FAISS for high-speed vector search
+- Sentence Transformers (all-MiniLM-L6-v2) for embeddings
+
+---
+
+## 🛟 Quick Troubleshooting
+
+### Backend download succeeded, but executable was not found
+
+- Verify release tag and asset names match the expected format.
+- Re-download backend from NeuroTrace advanced commands.
+- If needed, remove cached backend files and download again.
+
+### Database corrupted or inaccessible
+
+1. Close VS Code.
+2. Delete the `.neurotrace` folder in your workspace.
+3. Reopen VS Code.
+4. Initialize database again from the NeuroTrace sidebar.
+
+Warning: this permanently removes local thoughts in that workspace.
+
+---
+
+## 💬 Support & Community
 
 Need help or want to connect with other NeuroTrace users?
 
@@ -160,13 +160,11 @@ Need help or want to connect with other NeuroTrace users?
 
 We're here to help! Feel free to reach out with questions, suggestions, or feedback.
 
----
-
 ## 📄 License
 
 NeuroTrace uses a **hybrid licensing model**: security-critical code is open source, while premium features remain proprietary. See [LICENSE.md](LICENSE.md) for complete terms.
 
 ---
-> Version your reasoning.  🧠
+> Built to remember. 🧠
 > © 2025 BlackIron Technologies Ltd. All rights reserved.
 ---

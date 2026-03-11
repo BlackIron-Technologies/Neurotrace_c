@@ -1,6 +1,10 @@
 # <img src="../media/neurotrace-icon-light.svg#gh-light-mode-only" alt="NeuroTrace logo" height="62"><img src="../media/neurotrace-icon-dark.svg#gh-dark-mode-only" alt="NeuroTrace logo" height="62"> NeuroTrace Walkthrough: Complete User Guide
 
-Welcome to NeuroTrace! This extension helps you capture, organize, and version your reasoning process as a developer. Below, we guide you step by step from installation to advanced use of all functionalities. NeuroTrace acts as a "second brain" for your development workflow, storing thoughts locally with code references, semantic search, and more.
+Welcome to NeuroTrace — context memory for AI-assisted coding.
+
+NeuroTrace captures decisions, insights, hypotheses, and tasks linked to your code. You and your AI agents can search, connect, and build on that context across sessions. Everything stays local, encrypted, and under your control.
+
+This guide walks you through setup, daily use, agent workflows, and advanced features.
 
 ## Step 1: Installation and Initialization
 
@@ -19,7 +23,7 @@ Welcome to NeuroTrace! This extension helps you capture, organize, and version y
 4. You'll see a confirmation message: "NeuroTrace initialized successfully!".
 5. The sidebar updates to show the initialized state.
 
-**Note:** If no workspace is open, the Python server won't start.
+**Note:** If no workspace is open, the backend server won't start.
 
 ## Step 2: Add Your First Thought
 
@@ -36,7 +40,7 @@ Welcome to NeuroTrace! This extension helps you capture, organize, and version y
 
 **Free limit:** 45 thoughts per month. Premium: unlimited.
 
-The thought appears in the sidebar, and you'll see decorations (💭 Premium) in the code gutter if icons are enabled.
+The thought appears in the sidebar, and you'll see decorations (Premium) in the code gutter if icons are enabled.
 
 ## Step 3: Manage Thoughts
 
@@ -86,41 +90,109 @@ If the database is encrypted, you must unlock it once per session by entering th
 
 **Warning:** Decrypting the database makes your data insecure.
 
-## Step 5: Advanced Interface Features
+## Step 5: Agent Workflows
 
-### 5.1 Code Decorations (Premium)
-- Gutter icons (💭 for general thoughts, *o* for tasks with priority).
+NeuroTrace is built to work with AI coding agents. Through MCP-compatible tools, agents can read and write to your project memory autonomously.
+
+### 5.1 Setup
+
+NeuroTrace ships with a pre-configured `.github/copilot-instructions.md` that teaches agents how to use the memory system. No manual setup required — agents will automatically search for context before working and record decisions when done.
+
+### 5.2 What Agents Can Do
+
+With NeuroTrace tools available, agents can:
+
+- **Search before acting** — find prior decisions, rejected approaches, and open questions before writing code.
+- **Record outcomes** — save what was decided and why, so the next session has full context.
+- **Build the knowledge graph** — link related thoughts with typed relations (supports, contradicts, causes, blocks, refines).
+- **Discover patterns** — use semantic search and graph insights to find connections you might miss.
+
+### 5.3 Example Prompts
+
+Here are prompts you can use with your agent when NeuroTrace is active:
+
+**Before starting work:**
+> "Search NeuroTrace for any previous decisions about the authentication system before making changes."
+
+> "Check if there are any open hypotheses or tasks related to the API rate limiter."
+
+> "What did we decide about the database schema last time? Search for related thoughts."
+
+**During work:**
+> "Record this as a decision: we chose JWT over session tokens because the API is stateless. Tag it auth, architecture."
+
+> "Save a hypothesis: the memory leak might be caused by unclosed WebSocket connections in the chat module."
+
+> "Add a task to refactor the payment validation logic. Priority high."
+
+**After completing work:**
+> "Link the new caching decision to the previous performance insight about slow queries."
+
+> "Mark the hypothesis about WebSocket leaks as a discard — the actual cause was the event listener not being removed."
+
+> "Show me the graph insights for this workspace. Are there any isolated thoughts that should be connected?"
+
+**For context recovery:**
+> "I'm picking up this project after two weeks. Search NeuroTrace for recent decisions and open tasks to get me up to speed."
+
+> "What were the last 10 thoughts recorded in this workspace? Give me a summary."
+
+> "Find all thoughts related to 'migration' and summarize the current state."
+
+### 5.4 Available MCP Tools
+
+| Tool                | What it does                                             |
+| ------------------- | -------------------------------------------------------- |
+| `addThought`        | Create a new thought with type, tags, and code reference |
+| `editThought`       | Update text or tags of an existing thought               |
+| `deleteThought`     | Remove a thought permanently                             |
+| `listThoughts`      | List recent thoughts with pagination                     |
+| `searchThoughts`    | Keyword search across all thoughts                       |
+| `semanticSearch`    | Find thoughts by meaning, not just keywords              |
+| `suggestRelated`    | Discover similar thoughts using embeddings               |
+| `addRelation`       | Link two thoughts with a typed relation                  |
+| `deleteRelation`    | Remove a relation between thoughts                       |
+| `getGraphData`      | Read the full knowledge graph (nodes + edges)            |
+| `getGraphInsights`  | Get statistics and structural analysis                   |
+| `getDatabaseStatus` | Check if the workspace database is ready                 |
+
+---
+
+## Step 6: Advanced Interface Features
+
+### 6.1 Code Decorations
+- Gutter icons: white circle for general thoughts, colored circles for tasks (green for Low priority, orange for Moderate, red for High priority).
 - Show where you left thoughts.
-- Toggle: Click the "Toggle Code Icons" checkbox in the Advance Panel to enable/disable.
+- Toggle: Click the "Show Code Icons" checkbox in the settings Panel to enable/disable.
 - Save Changes
 
-### 5.2 Thought Graph (Premium)
+### 6.2 Thought Graph
 1. Click the "Open Graph" button in the sidebar.
 2. Visualize connections between thoughts (nodes and edges: causes, blocks, contradicts).
 3. Drag nodes to reorganize; layout is saved.
 4. If creates links manually, right-click over the link to delete.
 5. Insights: View graph statistics.
 
-### 5.3 Export Thoughts
+### 6.3 Export Thoughts
 1. Click the "Export" button in the sidebar.
 2. Filter by type, tag, date.
 3. Export to Markdown (with snippets, relations).
 
-### 5.4 Usage Management
+### 6.4 Usage Management
 - Check monthly limits in the sidebar (free: 45, premium: unlimited).
 - Upgrade to premium for advanced features.
 
-## Step 6: Useful Commands
+## Step 7: Useful Commands
 - `NeuroTrace: Search`: Text search (via sidebar search field).
 - `NeuroTrace: Semantic Search`: Semantic search (Premium, via sidebar button).
 - `NeuroTrace: Open Graph`: Open the graph (via sidebar button).
-- `NeuroTrace: Toggle Code Icons`: Enable/disable decorations (Premium, via Advanced Panel).
+- `NeuroTrace: Toggle Code Icons`: Enable/disable decorations (Premium, via Settings Panel).
 
 ## Troubleshooting
-- If Python server fails: Restart the extension or check Python.
-- Corrupt DB: Delete `.neurotrace` and reinitialize.
+- If the backend fails to start: Use the command palette (`Ctrl+Shift+P`) and run "NeuroTrace: Re-download Backend" to get a fresh copy.
+- Corrupt DB: Delete the `.neurotrace` folder in your workspace and reinitialize from the sidebar.
 
-Enjoy versioning your reasoning with NeuroTrace! For support, check the README.
+Built to remember. For support, check the README.
 
 ---
 © 2025 BlackIron Technologies Ltd. All rights reserved.
