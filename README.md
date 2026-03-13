@@ -2,8 +2,12 @@
 
 ### Context Memory for AI-Assisted Coding
 
-NeuroTrace is a local-first memory system for developers inside of your IDE.
-Capture decisions, insights, hypotheses, and tasks linked to your code, then retrieve them later through search, graph exploration, and MCP-compatible tooling.
+NeuroTrace is a local-first memory system for AI coding agents and developers inside your IDE.
+
+It captures decisions, insights, hypotheses, and tasks **linked directly to your code**, allowing both developers and AI agents to retrieve the reasoning behind a project.
+
+Git tracks the history of code.
+NeuroTrace tracks the history of reasoning.
 
 Perfect for: architecture decisions, debugging logs, feature planning, technical journaling, and long-running project context.
 
@@ -11,11 +15,11 @@ Perfect for: architecture decisions, debugging logs, feature planning, technical
 
 ## ✨ What It Looks Like
 
-### Sidebar with Thoughts
+### Sidebar with Memories
 
 ![Sidebar](media/sidebar-screenshot.png)
 
-### Interactive Thought Graph
+### Interactive Memory Graph
 
 ![Graph](media/graph-screenshot.png)
 
@@ -24,14 +28,14 @@ Perfect for: architecture decisions, debugging logs, feature planning, technical
 ## 🚀 Why NeuroTrace?
 
 - Capture structured memory where the work happens.
-- Link thoughts to real files, lines, and snippets.
+- Link memory entries to real files, lines, and snippets.
 - Search by text and semantic meaning.
 - Visualize relationships in an interactive graph.
 - Keep everything local-first and offline-friendly.
 
 ---
 
-## � Built for AI Agents
+## 🤖 Built for AI Agents
 
 NeuroTrace works as persistent memory for coding agents.
 
@@ -42,12 +46,12 @@ Instead of losing context between sessions, agents can search previous decisions
 1. Agent receives a task.
 2. Searches NeuroTrace for prior decisions and related context.
 3. Works with full project history available.
-4. Records the outcome as a structured thought.
-5. Links it to related thoughts in the graph.
+4. Records the outcome as a structured memory entry.
+5. Links it to related memories in the graph.
 
 NeuroTrace exposes its full API through MCP-compatible tools:
 
-- `addThought` / `editThought` / `deleteThought` — manage structured thoughts
+- `addThought` / `editThought` / `deleteThought` — manage structured memory entries.
 - `searchThoughts` / `semanticSearch` — find by keyword or meaning
 - `suggestRelated` — discover connections
 - `addRelation` / `deleteRelation` — link ideas explicitly
@@ -58,9 +62,9 @@ NeuroTrace ships with pre-configured agent instructions (`.github/copilot-instru
 
 ---
 
-## �🧠 Thought Types
+## 🧠 Memory Types
 
-NeuroTrace supports structured thought types for better long-term memory:
+NeuroTrace supports structured memory types for better long-term memory:
 
 - `hypothesis` for assumptions to validate
 - `decision` for final technical choices
@@ -96,11 +100,11 @@ For transparency, security-critical code is open source in our [GitHub repositor
 - Click Initialize Database in the sidebar.
 - NeuroTrace will create a local `.neurotrace` directory in your workspace.
 
-4. Add your first thought
+4. Add your first memory
 - Open a code file.
 - Select a snippet.
 - Press `Alt+N` or click `+` in the sidebar.
-- Save your note.
+- Save
 
 More details: [walkthrough/init.md](walkthrough/init.md)
 
