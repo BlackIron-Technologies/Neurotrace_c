@@ -2,19 +2,17 @@
 
 ## Persistent Memory for AI Agents That Lives With Your Code
 
-**Your agent starts every new chat with amnesia.**
-
-NeuroTrace gives developers and coding agents a persistent project memory layer inside the IDE: local-first, code-linked, available through MCP tools, and designed for real engineering workflows.
-
-Store decisions, debugging trails, tasks, hypotheses, and implementation context where the work happens so the next session starts with memory instead of guesses.
-
-> Built for long-running codebases, debugging, planning, architecture work, and agent-assisted development.
+Persistent project memory for developers and coding agents inside the IDE.
 
 ---
 
 ## See NeuroTrace In Action
 
 <video src="https://raw.githubusercontent.com/BlackIron-Technologies/Neurotrace_c/main/media/readme_optimized.mp4" autoplay loop muted playsinline controls preload="metadata" poster="https://raw.githubusercontent.com/BlackIron-Technologies/Neurotrace_c/main/media/sidebar-screenshot.png" width="960"></video>
+
+**Your agent starts every new chat with amnesia.**
+
+NeuroTrace gives developers and coding agents a local-first, code-linked memory layer that survives across chats and sessions.
 
 
 NeuroTrace helps agents and developers:
@@ -23,6 +21,8 @@ NeuroTrace helps agents and developers:
 - Retrieve project context before coding
 - Reuse decisions, tasks, and insights across sessions
 - Keep memory attached to the codebase instead of the chat
+
+> Built for long-running codebases, debugging, planning, architecture work, and agent-assisted development.
 
 ---
 
