@@ -13,6 +13,12 @@ Perfect for: architecture decisions, debugging logs, feature planning, technical
 
 ---
 
+## 🎬 See NeuroTrace In Action
+
+<video src="https://raw.githubusercontent.com/BlackIron-Technologies/Neurotrace_c/main/media/readme_optimized.mp4" autoplay loop muted playsinline controls preload="metadata" poster="https://raw.githubusercontent.com/BlackIron-Technologies/Neurotrace_c/main/media/sidebar-screenshot.png" width="960"></video>
+
+---
+
 ## ✨ What It Looks Like
 
 ### Sidebar with Memories
