@@ -1,87 +1,99 @@
-# NeuroTrace
+# NeuroTrace MCP
 
-### Context Memory for AI-Assisted Coding
+## Persistent Memory for AI Agents That Lives With Your Code
 
-NeuroTrace is a local-first memory system for AI coding agents and developers inside your IDE.
+**Your agent starts every new chat with amnesia.**
 
-It captures decisions, insights, hypotheses, and tasks **linked directly to your code**, allowing both developers and AI agents to retrieve the reasoning behind a project.
+NeuroTrace gives developers and coding agents a persistent project memory layer inside the IDE: local-first, code-linked, available through MCP tools, and designed for real engineering workflows.
 
-Git tracks the history of code.
-NeuroTrace tracks the history of reasoning.
+Store decisions, debugging trails, tasks, hypotheses, and implementation context where the work happens so the next session starts with memory instead of guesses.
 
-Perfect for: architecture decisions, debugging logs, feature planning, technical journaling, and long-running project context.
+> Built for long-running codebases, debugging, planning, architecture work, and agent-assisted development.
 
 ---
 
-## 🎬 See NeuroTrace In Action
+## See NeuroTrace In Action
 
 <video src="https://raw.githubusercontent.com/BlackIron-Technologies/Neurotrace_c/main/media/readme_optimized.mp4" autoplay loop muted playsinline controls preload="metadata" poster="https://raw.githubusercontent.com/BlackIron-Technologies/Neurotrace_c/main/media/sidebar-screenshot.png" width="960"></video>
 
+
+NeuroTrace helps agents and developers:
+
+- Save high-signal memory during real work
+- Retrieve project context before coding
+- Reuse decisions, tasks, and insights across sessions
+- Keep memory attached to the codebase instead of the chat
+
 ---
 
-## ✨ What It Looks Like
+## Quick Start
 
-### Sidebar with Memories
+1. Install NeuroTrace from the VS Code Marketplace.
+2. Open the NeuroTrace sidebar.
+3. Download the platform backend if prompted.
+4. Click **Initialize Database**.
+5. Let NeuroTrace generate the MCP setup and host-specific guidance for your workspace.
+6. Start a fresh agent chat and use NeuroTrace in that repo.
 
-![Sidebar](media/sidebar-screenshot.png)
+Generated setup includes:
 
-### Interactive Memory Graph
+- `.neurotrace/mcp/README.md` with ready-to-use MCP templates
+- `.cursor/rules/neurotrace.mdc` for Cursor when supported
+- `.github/copilot-instructions.md` for Copilot workflows in VS Code
+- automatic Codex MCP rebinding to the active workspace
+
+More details: [walkthrough/init.md](walkthrough/init.md)
+
+---
+
+## How It Works
+
+NeuroTrace gives coding agents a persistent memory layer they can query before acting and update after the work is done.
+
+**Typical workflow:**
+
+1. The agent receives a task.
+2. It checks NeuroTrace for prior decisions, tasks, and related context.
+3. It works with project history available inside the workspace.
+4. It saves the outcome as a structured memory.
+5. It links important context for future sessions.
+
+Key MCP capabilities include:
+
+- Create and edit structured memories
+- Search by keyword or semantic meaning
+- Retrieve file-scoped context
+- Discover related memories and graph connections
+- Check database readiness before work begins
+
+---
+
+## What NeuroTrace Sets Up
+
+After initialization, NeuroTrace prepares the workspace for both humans and agents:
+
+- Creates the local `.neurotrace` workspace directory
+- Stores the project memory database locally
+- Auto-configures supported agent hosts where possible
+- Generates MCP setup files under `.neurotrace/mcp/`
+- Generates host-specific guidance such as `.cursor/rules/neurotrace.mdc` or `.github/copilot-instructions.md`
+
+For client-specific setup and troubleshooting:
+
+- `.neurotrace/mcp/README.md`
+- [walkthrough/init.md](walkthrough/init.md)
+
+---
+
+## Interactive Graph
+
+NeuroTrace also includes a graph view for exploring connected project memory.
 
 ![Graph](media/graph-screenshot.png)
 
 ---
 
-## 🚀 Why NeuroTrace?
-
-- Capture structured memory where the work happens.
-- Link memory entries to real files, lines, and snippets.
-- Search by text and semantic meaning.
-- Visualize relationships in an interactive graph.
-- Keep everything local-first and offline-friendly.
-
----
-
-## 🤖 Built for AI Agents
-
-NeuroTrace works as persistent memory for coding agents.
-
-Instead of losing context between sessions, agents can search previous decisions, record new insights, and build on existing knowledge automatically.
-
-**A typical agent workflow:**
-
-1. Agent receives a task.
-2. Searches NeuroTrace for prior decisions and related context.
-3. Works with full project history available.
-4. Records the outcome as a structured memory entry.
-5. Links it to related memories in the graph.
-
-NeuroTrace exposes its full API through MCP-compatible tools:
-
-- `addThought` / `editThought` / `deleteThought` — manage structured memory entries.
-- `searchThoughts` / `semanticSearch` — find by keyword or meaning
-- `suggestRelated` — discover connections
-- `addRelation` / `deleteRelation` — link ideas explicitly
-- `getGraphData` / `getGraphInsights` — read the knowledge graph
-- `getDatabaseStatus` — check workspace state
-
-NeuroTrace ships with pre-configured agent instructions (`.github/copilot-instructions.md`) so agents know how to use the memory system out of the box.
-
----
-
-## 🧠 Memory Types
-
-NeuroTrace supports structured memory types for better long-term memory:
-
-- `hypothesis` for assumptions to validate
-- `decision` for final technical choices
-- `insight` for discoveries and learnings
-- `task` for follow-up work and debt
-- `discard` for rejected approaches
-- `note` for general context
-
----
-
-## 🔒 Privacy and Security by Design
+## Privacy And Security
 
 For transparency, security-critical code is open source in our [GitHub repository](https://github.com/BlackIron-Technologies/Neurotrace_c).
 
@@ -90,91 +102,23 @@ For transparency, security-critical code is open source in our [GitHub repositor
 - Optional anonymous telemetry
 - Works offline
 
----
+See also:
 
-## 🛠️ Installation and First Use
-
-1. Install from Marketplace
-- Search for NeuroTrace in the Extensions panel (`Ctrl+Shift+X`).
-- Click Install.
-
-2. Open the NeuroTrace sidebar
-- On first use, download the platform backend when prompted.
-- This one-time download includes the local AI/search runtime.
-
-3. Initialize your workspace database
-- Click Initialize Database in the sidebar.
-- NeuroTrace will create a local `.neurotrace` directory in your workspace.
-
-4. Add your first memory
-- Open a code file.
-- Select a snippet.
-- Press `Alt+N` or click `+` in the sidebar.
-- Save
-
-More details: [walkthrough/init.md](walkthrough/init.md)
+- [docs/PRIVACY.md](docs/PRIVACY.md)
+- [docs/TELEMETRY.md](docs/TELEMETRY.md)
 
 ---
 
-## 🏗️ Backend Distribution
+## Support
 
-NeuroTrace downloads platform-specific backend executables from GitHub Releases.
+- **X (Twitter):** [@NeuroTraceVsc](https://x.com/NeuroTraceVsc)
+- **Email:** [neuro_support@blackironhq.com](mailto:neuro_support@blackironhq.com)
 
-Expected release assets:
+## License
 
-- `neurotrace-windows.zip`
-- `neurotrace-linux.zip`
-- `neurotrace-macos.zip`
-
-Expected binaries inside extracted content:
-
-- Windows: `neurotrace.exe`
-- Linux: `neurotrace`
-- macOS: `neurotrace`
+NeuroTrace uses a hybrid licensing model: security-critical code is open source, while premium features remain proprietary. See [LICENSE.md](LICENSE.md) for complete terms.
 
 ---
 
-## 🧩 Core Technologies
-
-- SQLCipher3 for encrypted local storage
-- FAISS for high-speed vector search
-- Sentence Transformers (all-MiniLM-L6-v2) for embeddings
-
----
-
-## 🛟 Quick Troubleshooting
-
-### Backend download succeeded, but executable was not found
-
-- Verify release tag and asset names match the expected format.
-- Re-download backend from NeuroTrace advanced commands.
-- If needed, remove cached backend files and download again.
-
-### Database corrupted or inaccessible
-
-1. Close VS Code.
-2. Delete the `.neurotrace` folder in your workspace.
-3. Reopen VS Code.
-4. Initialize database again from the NeuroTrace sidebar.
-
-Warning: this permanently removes local thoughts in that workspace.
-
----
-
-## 💬 Support & Community
-
-Need help or want to connect with other NeuroTrace users?
-
-- **X (Twitter)**: [@NeuroTraceVsc](https://x.com/NeuroTraceVsc)
-- **Email**: neuro_support@blackironhq.com
-
-We're here to help! Feel free to reach out with questions, suggestions, or feedback.
-
-## 📄 License
-
-NeuroTrace uses a **hybrid licensing model**: security-critical code is open source, while premium features remain proprietary. See [LICENSE.md](LICENSE.md) for complete terms.
-
----
-> Built to remember. 🧠
-> © 2025 BlackIron Technologies Ltd. All rights reserved.
----
+> Built to remember.  
+> © 2026 BlackIron Technologies Ltd. All rights reserved.
