@@ -2,7 +2,7 @@
   "name": "neurotrace",
   "displayName": "NeuroTrace",
   "description": "Operational memory for AI agents and developers. Persistent decisions, insights, and tasks linked to your code across chats and sessions. Local-first, encrypted, offline.",
-  "version": "1.2.6",
+  "version": "1.2.7",
   "publisher": "BlackIronTechnologies",
   "license": "MIT",
   "contributors": [

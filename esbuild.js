@@ -31,8 +31,8 @@ async function main() {
 		],
 		bundle: true,
 		format: 'cjs',
-		minify: production,
-		mangleProps: production ? /^_/ : undefined,
+		minify: false, // Open source: ship readable, unminified output
+		mangleProps: undefined,
 		keepNames: false,
 		treeShaking: true,
 		legalComments: 'none',
