@@ -1,0 +1,80 @@
+name: Test Backend
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'compilation/neurotrace.py'
+      - 'compilation/fetch-onnx-model.ps1'
+      - 'compilation/smoke-onnx-model.py'
+      - 'compilation/test_executable.py'
+      - 'compilation/requirements-backend.txt'
+      - 'compilation/onnx_model/**'
+  pull_request:
+    paths:
+      - 'compilation/neurotrace.py'
+      - 'compilation/fetch-onnx-model.ps1'
+      - 'compilation/smoke-onnx-model.py'
+      - 'compilation/test_executable.py'
+      - 'compilation/requirements-backend.txt'
+      - 'compilation/onnx_model/**'
+
+jobs:
+  test-backend:
+    name: Run Comprehensive Backend Tests
+    runs-on: ${{ matrix.os }}
+    
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-14, windows-latest]
+        python-version: ['3.11']
+      fail-fast: false
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+        cache: 'pip'
+        cache-dependency-path: compilation/requirements-backend.txt
+        
+    - name: Install dependencies
+      working-directory: compilation
+      shell: bash
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements-backend.txt
+        
+    - name: Fetch pinned ONNX model
+      shell: pwsh
+      run: ./compilation/fetch-onnx-model.ps1
+        
+    - name: Compile Python backend
+      working-directory: compilation
+      shell: bash
+      run: |
+        python -m py_compile neurotrace.py
+        
+    - name: Smoke test ONNX model
+      shell: bash
+      run: |
+        python compilation/smoke-onnx-model.py
+        
+    - name: Test summary
+      if: always()
+      run: |
+        echo "## Test Results - ${{ matrix.os }}" >> $GITHUB_STEP_SUMMARY
+        echo "Python Version: ${{ matrix.python-version }}" >> $GITHUB_STEP_SUMMARY
+        
+    - name: Upload test results
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-results-${{ matrix.os }}
+        path: |
+          compilation/*.log
+          compilation/test_*.db
+        retention-days: 7

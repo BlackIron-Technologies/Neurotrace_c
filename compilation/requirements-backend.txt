@@ -1,0 +1,11 @@
+# Database
+sqlcipher3-wheels==0.5.5.post0
+
+# AI/ML - ONNX Runtime for embeddings instead of SentenceTransformer
+onnxruntime==1.23.1
+faiss-cpu==1.11.0
+transformers==4.55.4
+numpy==2.3.3
+
+# Utilities
+python-dotenv==1.1.1

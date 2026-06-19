@@ -1,0 +1,69 @@
+# Development files
+.vscode/**
+.vscode-test/**
+.vscode-test.mjs
+out/**
+src/**
+.git/**
+.github/**
+node_modules/**
+
+# Build configuration
+esbuild.js
+tsconfig.json
+pyrightconfig.json
+eslint.config.mjs
+.gitignore
+.vscodeignore
+.yarnrc
+NeuroTrace.code-workspace
+
+# Documentation for developers
+vsc-extension-quickstart.md
+neuro_enterprise.md
+
+# Development documentation (exclude)
+AGENTS.md
+
+# Test files
+**/*.test.js
+**/*.test.ts
+
+# Source maps (for debugging only)
+**/*.map
+
+# TypeScript source files
+**/*.ts
+!walkthrough/**/*.ts
+
+# Build artifacts
+.compilation/**
+compilation/**
+releases/**
+bin/dist/**
+bin/onnx_model/**
+bin/__pycache__/**
+
+# Scripts
+*.sh
+*.ps1
+
+# Logs
+*.log
+
+# Temporary/local-only features
+neuro_enterprise/**
+
+# Runtime/user data
+.neurotrace/**
+.neurotraceOring/**
+.cursor/**
+.claude/**
+.codex/**
+
+# VSIX packages
+*.vsix
+media/readme_optimized.mp4
+# Note: bin/, media/, walkthrough/, dist/ are INCLUDED (needed at runtime)
+# Note: bin/dist/ is excluded (contains compiled binaries for distribution)
+# Note: bin/neurotrace.py is INCLUDED (needed at runtime)
