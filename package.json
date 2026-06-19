@@ -1,0 +1,724 @@
+{
+  "name": "neurotrace",
+  "displayName": "NeuroTrace",
+  "description": "Operational memory for AI agents and developers. Persistent decisions, insights, and tasks linked to your code across chats and sessions. Local-first, encrypted, offline.",
+  "version": "1.2.6",
+  "publisher": "BlackIronTechnologies",
+  "license": "MIT",
+  "contributors": [
+    {
+      "name": "CastleOneX",
+      "url": "https://github.com/CastleOneX"
+    }
+  ],
+  "icon": "media/neurotrace-icon.png",
+  "pricing": "Free",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/BlackIron-Technologies/Neurotrace_c.git"
+  },
+  "bugs": {
+    "url": "https://github.com/BlackIron-Technologies/Neurotrace_c/issues"
+  },
+  "homepage": "https://github.com/BlackIron-Technologies/Neurotrace_c#readme",
+  "qna": "marketplace",
+  "badges": [
+    {
+      "url": "https://img.shields.io/badge/memory-context%20memory%20for%20agents-blue",
+      "href": "https://marketplace.visualstudio.com/items?itemName=BlackIronTechnologies.neurotrace",
+      "description": "Context Memory for AI Agents"
+    }
+  ],
+  "engines": {
+    "vscode": "^1.101.0"
+  },
+  "categories": [
+    "AI",
+    "Other"
+  ],
+  "keywords": [
+    "operational memory",
+    "persistent memory",
+    "agent memory",
+    "ai agents",
+    "coding agent",
+    "developer memory",
+    "project memory",
+    "code memory",
+    "code context",
+    "project context",
+    "repo context",
+    "encrypted",
+    "private",
+    "ai",
+    "semantic search",
+    "knowledge graph",
+    "mcp",
+    "model context protocol",
+    "context memory",
+    "copilot",
+    "cursor",
+    "vscode",
+    "codex",
+    "claude"
+  ],
+  "galleryBanner": {
+    "color": "#1e1e1e",
+    "theme": "dark"
+  },
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "languageModelTools": [
+      {
+        "name": "neurotrace_addThought",
+        "toolReferenceName": "neurotrace_addThought",
+        "tags": [
+          "neurotrace",
+          "notes",
+          "memories",
+          "write"
+        ],
+        "displayName": "NeuroTrace: Add Memory",
+        "modelDescription": "Create a memory in NeuroTrace. Use only for durable, high-signal context that will help in a later session: decisions, non-obvious insights, concrete risks, real follow-up tasks, validated hypotheses, discards, or important notes. Include file_path, line, and snippet when the memory is tied to code. For tasks, include priority and status when applicable. Do not use for routine progress updates, trivial bug fixes, obvious code changes, or temporary debugging notes. Prefer fewer, higher-value memories.",
+        "userDescription": "Add a new memory to NeuroTrace, linked to code context.",
+        "canBeReferencedInPrompt": true,
+        "icon": "$(add)",
+        "inputSchema": {
+          "type": "object",
+          "required": [
+            "text",
+            "type"
+          ],
+          "properties": {
+            "text": {
+              "type": "string",
+              "description": "Memory text to store."
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "hypothesis",
+                "decision",
+                "insight",
+                "task",
+                "risk",
+                "discard",
+                "note"
+              ],
+              "description": "Memory type."
+            },
+            "tags": {
+              "type": "string",
+              "description": "Comma-separated tags."
+            },
+            "file_path": {
+              "type": "string",
+              "description": "Absolute file path linked to this memory."
+            },
+            "line": {
+              "type": "number",
+              "description": "1-based line number in file_path."
+            },
+            "snippet": {
+              "type": "string",
+              "description": "Related code snippet."
+            },
+            "priority": {
+              "type": "string",
+              "enum": [
+                "Low",
+                "Moderate",
+                "High"
+              ],
+              "description": "Task priority only."
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "open",
+                "in-progress",
+                "blocked",
+                "closed",
+                "obsolete"
+              ],
+              "description": "Task status only: open=pending, in-progress=active, blocked=waiting, closed=done, obsolete=no longer relevant."
+            }
+          }
+        }
+      },
+      {
+        "name": "neurotrace_listThoughts",
+        "toolReferenceName": "neurotrace_listThoughts",
+        "tags": [
+          "neurotrace",
+          "notes",
+          "memories",
+          "read"
+        ],
+        "displayName": "NeuroTrace: List Memories",
+        "modelDescription": "List memories with pagination and optional type filter.",
+        "userDescription": "List memories from the NeuroTrace knowledge base.",
+        "canBeReferencedInPrompt": true,
+        "icon": "$(list-unordered)",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "page": {
+              "type": "number",
+              "description": "0-based page number."
+            },
+            "page_size": {
+              "type": "number",
+              "description": "Items per page."
+            },
+            "type_filter": {
+              "type": "string",
+              "enum": [
+                "hypothesis",
+                "decision",
+                "insight",
+                "task",
+                "risk",
+                "discard",
+                "note"
+              ],
+              "description": "Optional memory type filter."
+            }
+          }
+        }
+      },
+      {
+        "name": "neurotrace_editThought",
+        "toolReferenceName": "neurotrace_editThought",
+        "tags": [
+          "neurotrace",
+          "notes",
+          "memories",
+          "write"
+        ],
+        "displayName": "NeuroTrace: Edit Memory",
+        "modelDescription": "Update an existing memory by id. Use to change text, tags, code reference, task priority, or task status.",
+        "userDescription": "Edit an existing memory in NeuroTrace.",
+        "canBeReferencedInPrompt": true,
+        "icon": "$(edit)",
+        "inputSchema": {
+          "type": "object",
+          "required": [
+            "thought_id"
+          ],
+          "properties": {
+            "thought_id": {
+              "type": "string",
+              "description": "Memory id to edit."
+            },
+            "new_text": {
+              "type": "string",
+              "description": "New memory text."
+            },
+            "new_tags": {
+              "type": "string",
+              "description": "New comma-separated tags."
+            },
+            "new_file_path": {
+              "type": "string",
+              "description": "New absolute file path."
+            },
+            "new_line": {
+              "type": "number",
+              "description": "New 1-based line number."
+            },
+            "new_snippet": {
+              "type": "string",
+              "description": "New related code snippet."
+            },
+            "new_priority": {
+              "type": "string",
+              "enum": [
+                "Low",
+                "Moderate",
+                "High"
+              ],
+              "description": "New task priority only."
+            },
+            "new_status": {
+              "type": "string",
+              "enum": [
+                "open",
+                "in-progress",
+                "blocked",
+                "closed",
+                "obsolete"
+              ],
+              "description": "New task status only: open=pending, in-progress=active, blocked=waiting, closed=done, obsolete=no longer relevant."
+            }
+          }
+        }
+      },
+      {
+        "name": "neurotrace_getMemoriesByFile",
+        "toolReferenceName": "neurotrace_getMemoriesByFile",
+        "tags": [
+          "neurotrace",
+          "memories",
+          "file",
+          "read"
+        ],
+        "displayName": "NeuroTrace: Get Memories By File",
+        "modelDescription": "List memories linked to one exact file path. Active tasks are returned first, then non-task memories, then closed tasks.",
+        "userDescription": "Retrieve memories linked to a specific file.",
+        "canBeReferencedInPrompt": true,
+        "icon": "$(file-code)",
+        "inputSchema": {
+          "type": "object",
+          "required": [
+            "file_path"
+          ],
+          "properties": {
+            "file_path": {
+              "type": "string",
+              "description": "Absolute file path."
+            }
+          }
+        }
+      },
+      {
+        "name": "neurotrace_deleteThought",
+        "toolReferenceName": "neurotrace_deleteThought",
+        "tags": [
+          "neurotrace",
+          "notes",
+          "memories",
+          "write"
+        ],
+        "displayName": "NeuroTrace: Delete Memory",
+        "modelDescription": "Permanently delete a memory by id.",
+        "userDescription": "Delete a memory from NeuroTrace.",
+        "canBeReferencedInPrompt": true,
+        "icon": "$(trash)",
+        "inputSchema": {
+          "type": "object",
+          "required": [
+            "thought_id"
+          ],
+          "properties": {
+            "thought_id": {
+              "type": "string",
+              "description": "Memory id to delete."
+            }
+          }
+        }
+      },
+      {
+        "name": "neurotrace_searchThoughts",
+        "toolReferenceName": "neurotrace_searchThoughts",
+        "tags": [
+          "neurotrace",
+          "notes",
+          "memories",
+          "search",
+          "read"
+        ],
+        "displayName": "NeuroTrace: Search Memories",
+        "modelDescription": "Keyword search across memory text, tags, file path, and task status.",
+        "userDescription": "Search memories by keyword.",
+        "canBeReferencedInPrompt": true,
+        "icon": "$(search)",
+        "inputSchema": {
+          "type": "object",
+          "required": [
+            "term"
+          ],
+          "properties": {
+            "term": {
+              "type": "string",
+              "description": "Search term."
+            }
+          }
+        }
+      },
+      {
+        "name": "neurotrace_semanticSearch",
+        "toolReferenceName": "neurotrace_semanticSearch",
+        "tags": [
+          "neurotrace",
+          "notes",
+          "memories",
+          "search",
+          "ai",
+          "read"
+        ],
+        "displayName": "NeuroTrace: Semantic Search",
+        "modelDescription": "Semantic search for conceptually related memories.",
+        "userDescription": "Semantic AI search across memories.",
+        "canBeReferencedInPrompt": true,
+        "icon": "$(sparkle)",
+        "inputSchema": {
+          "type": "object",
+          "required": [
+            "query"
+          ],
+          "properties": {
+            "query": {
+              "type": "string",
+              "description": "Natural-language search query."
+            }
+          }
+        }
+      },
+      {
+        "name": "neurotrace_suggestRelated",
+        "toolReferenceName": "neurotrace_suggestRelated",
+        "tags": [
+          "neurotrace",
+          "notes",
+          "memories",
+          "ai",
+          "read"
+        ],
+        "displayName": "NeuroTrace: Suggest Related Memories",
+        "modelDescription": "Find memories related to a specific memory id.",
+        "userDescription": "Find memories related to a specific memory.",
+        "canBeReferencedInPrompt": true,
+        "icon": "$(link)",
+        "inputSchema": {
+          "type": "object",
+          "required": [
+            "thought_id"
+          ],
+          "properties": {
+            "thought_id": {
+              "type": "string",
+              "description": "Memory id to expand from."
+            }
+          }
+        }
+      },
+      {
+        "name": "neurotrace_getGraphData",
+        "toolReferenceName": "neurotrace_getGraphData",
+        "tags": [
+          "neurotrace",
+          "graph",
+          "knowledge",
+          "read"
+        ],
+        "displayName": "NeuroTrace: Get Knowledge Graph",
+        "modelDescription": "Return memory graph nodes and edges for the current workspace.",
+        "userDescription": "Get the memory knowledge graph data.",
+        "canBeReferencedInPrompt": true,
+        "icon": "$(type-hierarchy)",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "include_semantic": {
+              "type": "boolean",
+              "description": "Include semantic similarity edges."
+            }
+          }
+        }
+      },
+      {
+        "name": "neurotrace_getGraphInsights",
+        "toolReferenceName": "neurotrace_getGraphInsights",
+        "tags": [
+          "neurotrace",
+          "graph",
+          "analytics",
+          "read"
+        ],
+        "displayName": "NeuroTrace: Get Graph Insights",
+        "modelDescription": "Return graph analytics such as hubs, isolated nodes, and communities.",
+        "userDescription": "Analyze the knowledge graph for insights.",
+        "canBeReferencedInPrompt": true,
+        "icon": "$(lightbulb)",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        }
+      },
+      {
+        "name": "neurotrace_addRelation",
+        "toolReferenceName": "neurotrace_addRelation",
+        "tags": [
+          "neurotrace",
+          "graph",
+          "relations",
+          "write"
+        ],
+        "displayName": "NeuroTrace: Add Relation",
+        "modelDescription": "Create a manual relation between two memories.",
+        "userDescription": "Create a relation between two memories.",
+        "canBeReferencedInPrompt": true,
+        "icon": "$(git-merge)",
+        "inputSchema": {
+          "type": "object",
+          "required": [
+            "source_id",
+            "target_id",
+            "relation_type"
+          ],
+          "properties": {
+            "source_id": {
+              "type": "string",
+              "description": "Source memory id."
+            },
+            "target_id": {
+              "type": "string",
+              "description": "Target memory id."
+            },
+            "relation_type": {
+              "type": "string",
+              "enum": [
+                "causes",
+                "blocks",
+                "contradicts",
+                "supports",
+                "related"
+              ],
+              "description": "Relation type."
+            }
+          }
+        }
+      },
+      {
+        "name": "neurotrace_deleteRelation",
+        "toolReferenceName": "neurotrace_deleteRelation",
+        "tags": [
+          "neurotrace",
+          "graph",
+          "relations",
+          "write"
+        ],
+        "displayName": "NeuroTrace: Delete Relation",
+        "modelDescription": "Delete a manual relation by relation id.",
+        "userDescription": "Delete a relation between two memories.",
+        "canBeReferencedInPrompt": true,
+        "icon": "$(close)",
+        "inputSchema": {
+          "type": "object",
+          "required": [
+            "relation_id"
+          ],
+          "properties": {
+            "relation_id": {
+              "type": "string",
+              "description": "Relation id to delete."
+            }
+          }
+        }
+      },
+      {
+        "name": "neurotrace_getDatabaseStatus",
+        "toolReferenceName": "neurotrace_getDatabaseStatus",
+        "tags": [
+          "neurotrace",
+          "status",
+          "read"
+        ],
+        "displayName": "NeuroTrace: Get Database Status",
+        "modelDescription": "Check whether NeuroTrace is ready in this workspace.",
+        "userDescription": "Check NeuroTrace database and backend status.",
+        "canBeReferencedInPrompt": true,
+        "icon": "$(database)",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        }
+      }
+    ],
+    "commands": [
+      {
+        "command": "neurotrace.init",
+        "title": "NeuroTrace: Initialize Database"
+      },
+      {
+        "command": "neurotrace.addThought",
+        "title": "NeuroTrace: Add Thought"
+      },
+      {
+        "command": "neurotrace.editThought",
+        "title": "NeuroTrace: Edit Thought"
+      },
+      {
+        "command": "neurotrace.showMemoriesForCurrentFile",
+        "title": "NeuroTrace: Show Memories for Current File"
+      },
+      {
+        "command": "neurotrace.deleteThought",
+        "title": "NeuroTrace: Delete Thought"
+      },
+      {
+        "command": "neurotrace.search",
+        "title": "NeuroTrace: Search Thoughts"
+      },
+      {
+        "command": "neurotrace.semanticSearch",
+        "title": "NeuroTrace: Semantic Search Thoughts"
+      },
+      {
+        "command": "neurotrace.suggestRelated",
+        "title": "NeuroTrace: Suggest Related"
+      },
+      {
+        "command": "neurotrace.export",
+        "title": "NeuroTrace: Export Thoughts"
+      },
+      {
+        "command": "neurotrace.advancedExport",
+        "title": "NeuroTrace: Advanced Export"
+      },
+      {
+        "command": "neurotrace.toggleCodeIcons",
+        "title": "NeuroTrace: Toggle Code Icons"
+      },
+      {
+        "command": "neurotrace.openGraph",
+        "title": "NeuroTrace: Open Thought Graph"
+      },
+      {
+        "command": "neurotrace.unlockDatabase",
+        "title": "NeuroTrace: Unlock Database"
+      },
+      {
+        "command": "neurotrace.unlockDatabaseForCodex",
+        "title": "NeuroTrace: Unlock Database for Codex"
+      },
+      {
+        "command": "neurotrace.encryptDatabase",
+        "title": "NeuroTrace: Encrypt Database"
+      },
+      {
+        "command": "neurotrace.decryptDatabase",
+        "title": "NeuroTrace: Decrypt Database"
+      },
+      {
+        "command": "neurotrace.redownloadBackend",
+        "title": "NeuroTrace: Re-download Backend"
+      },
+      {
+        "command": "neurotrace.configureMcp",
+        "title": "NeuroTrace: Configure MCP for External Agents"
+      },
+      {
+        "command": "neurotrace.generateMcpFiles",
+        "title": "NeuroTrace: Generate MCP Files in Workspace"
+      },
+      {
+        "command": "neurotrace.openInstructionSync",
+        "title": "NeuroTrace: Open Instruction Sync"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "neurotrace-sidebar-container",
+          "title": "NeuroTrace",
+          "icon": "media/neurotrace-icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "neurotrace-sidebar-container": [
+        {
+          "id": "neurotrace-sidebar",
+          "name": "NeuroTrace",
+          "icon": "media/neurotrace-icon.svg",
+          "type": "webview"
+        }
+      ]
+    },
+    "menus": {
+      "editor/context": [
+        {
+          "command": "neurotrace.addThought",
+          "group": "navigation",
+          "when": "editorTextFocus"
+        }
+      ]
+    },
+    "walkthroughs": [
+      {
+        "id": "neurotrace.onboarding",
+        "title": "Get Started with NeuroTrace",
+        "description": "Learn how to use NeuroTrace for reasoning versioning.",
+        "steps": [
+          {
+            "id": "init",
+            "title": "Initialize NeuroTrace",
+            "description": "Run 'python neurotrace.py init' in your workspace terminal to set up the database.",
+            "media": {
+              "markdown": "walkthrough/init.md"
+            }
+          }
+        ]
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "neurotrace.addThought",
+        "key": "alt+n",
+        "when": "editorTextFocus"
+      },
+      {
+        "command": "neurotrace.openGraph",
+        "key": "ctrl+alt+g",
+        "when": "editorTextFocus"
+      }
+    ],
+    "configuration": {
+      "title": "NeuroTrace",
+      "properties": {
+        "neurotrace.showCodeIcons": {
+          "type": "boolean",
+          "default": true,
+          "description": "Showing NeuroTrace icons in the code editor.",
+          "markdownDescription": "Enable to show NeuroTrace icons in the code editor."
+        },
+        "neurotrace.autoDownloadBackend": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically download the backend executable if not found",
+          "markdownDescription": "When enabled, NeuroTrace will automatically download the platform-specific backend (~300-450 MB) from GitHub Releases. Disable if you prefer to use a local Python installation."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run package",
+    "compile": "npm run check-types && npm run lint && node esbuild.js",
+    "watch": "npm-run-all -p watch:*",
+    "watch:esbuild": "node esbuild.js --watch",
+    "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
+    "package": "npm run check-types && npm run lint && node esbuild.js --production",
+    "check-python": "python -m py_compile bin/neurotrace.py compilation/neurotrace.py",
+    "check-onnx": "python compilation/smoke-onnx-model.py",
+    "compile-tests": "npm run compile",
+    "watch-tests": "tsc --noEmit --watch --project tsconfig.json",
+    "pretest": "npm run compile",
+    "check-types": "tsc --noEmit",
+    "lint": "eslint src",
+    "test": "npm run check-python && npm run check-onnx"
+  },
+  "devDependencies": {
+    "@types/adm-zip": "^0.5.5",
+    "@types/cytoscape": "^3.21.9",
+    "@types/node": "20.x",
+    "@types/vscode": "^1.101.0",
+    "@typescript-eslint/eslint-plugin": "^8.31.1",
+    "@typescript-eslint/parser": "^8.31.1",
+    "@vscode/vsce": "3.7.1",
+    "esbuild": "^0.25.3",
+    "eslint": "^9.25.1",
+    "npm-run-all": "^4.1.5",
+    "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "adm-zip": "^0.5.16",
+    "cytoscape": "^3.33.0",
+    "cytoscape-cola": "^2.5.1",
+    "cytoscape-edgehandles": "^4.0.1"
+  }
+}

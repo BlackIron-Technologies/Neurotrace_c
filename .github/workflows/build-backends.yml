@@ -1,0 +1,323 @@
+name: Build Backend Binaries
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag (e.g., 0.9.0-beta.1)'
+        required: true
+        default: '0.9.0-beta.1'
+      create_release:
+        description: 'Create GitHub Release?'
+        required: true
+        type: boolean
+        default: false
+
+jobs:
+  build-windows:
+    name: Build Windows Backend
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+        cache-dependency-path: compilation/requirements-backend.txt
+        
+    - name: Install dependencies
+      working-directory: compilation
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements-backend.txt
+        pip install pyinstaller
+
+    - name: Fetch pinned ONNX model
+      shell: pwsh
+      run: ./compilation/fetch-onnx-model.ps1
+        
+    - name: Build Windows executable
+      working-directory: compilation
+      run: .\build-windows.ps1
+      
+    - name: Verify build
+      working-directory: compilation
+      run: |
+        if (Test-Path "dist\neurotrace-windows\neurotrace.exe") {
+          Write-Host "✓ Windows executable built successfully"
+          $size = (Get-Item "dist\neurotrace-windows\neurotrace.exe").Length / 1MB
+          Write-Host "Size: $([math]::Round($size, 2)) MB"
+        } else {
+          Write-Host "✗ Build failed!"
+          exit 1
+        }
+        
+    - name: Test Windows executable
+      working-directory: compilation
+      run: |
+        Write-Host "Running test suite on Windows executable..."
+        python test_executable.py dist/neurotrace-windows/neurotrace.exe
+        
+    - name: Upload Windows artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: neurotrace-backend-windows
+        path: compilation/dist/neurotrace-windows/
+        retention-days: 7
+
+  build-linux:
+    name: Build Linux Backend
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+        cache-dependency-path: compilation/requirements-backend.txt
+        
+    - name: Install dependencies
+      working-directory: compilation
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements-backend.txt
+        pip install pyinstaller
+
+    - name: Fetch pinned ONNX model
+      shell: pwsh
+      run: ./compilation/fetch-onnx-model.ps1
+        
+    - name: Verify ONNX model exists
+      working-directory: compilation
+      run: |
+        echo "Checking for onnx_model directory..."
+        ls -la
+        if [ -d "onnx_model" ]; then
+          echo "✓ onnx_model directory found"
+          ls -la onnx_model/
+        else
+          echo "✗ onnx_model directory NOT found"
+          exit 1
+        fi
+        
+    - name: Build Linux executable
+      working-directory: compilation
+      run: |
+        chmod +x build-linux.sh
+        ./build-linux.sh
+        
+    - name: Verify build
+      working-directory: compilation
+      run: |
+        if [ -f "dist/neurotrace-linux/neurotrace" ]; then
+          echo "✓ Linux executable built successfully"
+          size=$(du -h dist/neurotrace-linux/neurotrace | cut -f1)
+          echo "Size: $size"
+        else
+          echo "✗ Build failed!"
+          exit 1
+        fi
+        
+    - name: Test Linux executable
+      working-directory: compilation
+      run: |
+        echo "Running test suite on Linux executable..."
+        python test_executable.py dist/neurotrace-linux/neurotrace
+        
+    - name: Upload Linux artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: neurotrace-backend-linux
+        path: compilation/dist/neurotrace-linux/
+        retention-days: 7
+
+  build-macos:
+    name: Build macOS Backend (Apple Silicon)
+    runs-on: macos-14  # Apple Silicon runner - produces arm64 binary (compatible with Intel via Rosetta 2)
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+        cache-dependency-path: compilation/requirements-backend.txt
+        
+    - name: Install dependencies
+      working-directory: compilation
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements-backend.txt
+        pip install pyinstaller
+
+    - name: Fetch pinned ONNX model
+      shell: pwsh
+      run: ./compilation/fetch-onnx-model.ps1
+        
+    - name: Build macOS executable (Apple Silicon)
+      working-directory: compilation
+      run: |
+        chmod +x build-macos.sh
+        # Builds for native architecture (arm64 on macos-14)
+        # Compatible with Intel Macs via Rosetta 2
+        ./build-macos.sh
+        
+    - name: Verify macOS binary
+      working-directory: compilation
+      run: |
+        if [ -f "dist/neurotrace-macos/neurotrace" ]; then
+          echo "✓ macOS executable built successfully"
+          file dist/neurotrace-macos/neurotrace
+          size=$(du -h dist/neurotrace-macos/neurotrace | cut -f1)
+          echo "Size: $size"
+          
+          # Show architecture
+          echo "Architecture:"
+          lipo -info dist/neurotrace-macos/neurotrace || echo "Single architecture binary"
+        else
+          echo "✗ Build failed!"
+          exit 1
+        fi
+        
+    - name: Code sign (ad-hoc)
+      working-directory: compilation
+      run: |
+        echo "Applying ad-hoc code signature..."
+        codesign --deep --force --sign - dist/neurotrace-macos/neurotrace
+        echo "✓ Code signed"
+        
+    - name: Test macOS executable
+      working-directory: compilation
+      run: |
+        echo "Running test suite on macOS executable..."
+        python test_executable.py dist/neurotrace-macos/neurotrace
+        
+    - name: Upload macOS artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: neurotrace-backend-macos
+        path: compilation/dist/neurotrace-macos/
+        retention-days: 7
+
+  package-and-release:
+    name: Package & Release
+    needs: [build-windows, build-linux, build-macos]
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts/
+        
+    - name: Create releases directory structure
+      run: |
+        mkdir -p releases
+        mkdir -p compilation/dist
+        
+    - name: Move artifacts to compilation/dist
+      run: |
+        cp -r artifacts/neurotrace-backend-windows compilation/dist/neurotrace-windows
+        cp -r artifacts/neurotrace-backend-linux compilation/dist/neurotrace-linux
+        cp -r artifacts/neurotrace-backend-macos compilation/dist/neurotrace-macos
+        
+    - name: Check ONNX model source
+      run: |
+        if [ -d "compilation/onnx_model" ]; then
+          echo "ONNX model source found in compilation/onnx_model"
+        else
+          echo "Warning: compilation/onnx_model not found, backend packages may be incomplete"
+        fi
+        
+    - name: Setup PowerShell
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y powershell
+        
+    - name: Package releases
+      run: |
+        cd compilation
+        # Use the version without 'v' prefix for filenames
+        VERSION="${{ inputs.version }}"
+        pwsh -File package-releases.ps1 -Version "$VERSION"
+        
+        # The script creates files like: neurotrace-backend-{platform}-{version}.zip
+        # But BackendDownloader expects: neurotrace-{platform}.zip
+        # So we need to rename them
+        cd ../releases
+        
+        if [ -f "neurotrace-backend-windows-$VERSION.zip" ]; then
+          cp "neurotrace-backend-windows-$VERSION.zip" "neurotrace-windows.zip"
+        fi
+        
+        if [ -f "neurotrace-backend-linux-$VERSION.zip" ]; then
+          cp "neurotrace-backend-linux-$VERSION.zip" "neurotrace-linux.zip"
+        fi
+        
+        if [ -f "neurotrace-backend-macos-$VERSION.zip" ]; then
+          cp "neurotrace-backend-macos-$VERSION.zip" "neurotrace-macos.zip"
+        fi
+        
+    - name: Verify packages
+      run: |
+        cd compilation
+        pwsh -File verify-release-packages.ps1 -ReleasePath "../releases"
+        
+    - name: Upload packages as artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: release-packages
+        path: |
+          releases/*.zip
+          releases/SHA256SUMS.txt
+          releases/RELEASE_NOTES_*.md
+        retention-days: 30
+        
+    - name: Create GitHub Release
+      if: inputs.create_release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ inputs.version }}
+        name: NeuroTrace v${{ inputs.version }}
+        body_path: releases/RELEASE_NOTES_${{ inputs.version }}.md
+        draft: false
+        prerelease: ${{ contains(inputs.version, 'beta') || contains(inputs.version, 'alpha') }}
+        files: |
+          releases/neurotrace-windows.zip
+          releases/neurotrace-linux.zip
+          releases/neurotrace-macos.zip
+          releases/SHA256SUMS.txt
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Summary
+      run: |
+        echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Artifacts Created" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Windows Backend" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Linux Backend" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ macOS Backend (Universal Binary)" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Package Sizes" >> $GITHUB_STEP_SUMMARY
+        ls -lh releases/*.zip | awk '{print "- " $9 ": " $5}' >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        if [ "${{ inputs.create_release }}" = "true" ]; then
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Release" >> $GITHUB_STEP_SUMMARY
+          echo "- 🚀 GitHub Release created: v${{ inputs.version }}" >> $GITHUB_STEP_SUMMARY
+        fi

@@ -1,0 +1,720 @@
+/* Existing styles */
+        body { font-family: var(--vscode-font-family, sans-serif); padding: 0 10px; }
+        
+        /* New style for the header with menu */
+        .header-container {
+          position: relative;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 16px;
+          padding: 12px 8px 12px 8px;
+          margin-bottom: 16px;
+          border-radius: 14px;
+          border: 1px solid rgba(111, 166, 255, 0.07);
+          background: linear-gradient(135deg, rgba(23, 38, 67, 0.66), rgba(24, 28, 40, 0.52));
+          box-shadow: 0 16px 38px rgba(0, 0, 0, 0);
+          backdrop-filter: blur(12px);
+        }
+
+        .header-title {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+        }
+
+        .header-title__icon {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 42px;
+          height: 42px;
+          border-radius: 14px;
+          background: linear-gradient(135deg, rgba(111, 166, 255, 0.1), rgba(43, 63, 107, 0.9));
+          border: 1px solid rgba(111, 167, 255, 0.4);
+          color: var(--vscode-editorLightBulb-foreground, #b4d5ff);
+          position: relative;
+          overflow: hidden;
+          transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+        }
+
+        .header-title__icon svg {
+          width: 22px;
+          height: 22px;
+          transition: opacity 0.2s ease;
+        }
+
+        .header-title__icon svg.header-title__shield {
+          position: absolute;
+          opacity: 0;
+        }
+
+        .header-title__icon.is-secure {
+          background: linear-gradient(135deg, rgba(59, 164, 216, 0.32), rgba(37, 58, 104, 0.92));
+          border-color: rgba(59, 164, 216, 0.45);
+          color: #0e639c;
+        }
+
+        .header-title__icon.is-secure svg.header-title__bulb {
+          opacity: 0;
+        }
+
+        .header-title__icon.is-secure svg.header-title__shield {
+          opacity: 1;
+        }
+
+        .header-title__copy {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+
+        .header-eyebrow {
+          font-size: 0.72rem;
+          letter-spacing: 0.26em;
+          text-transform: uppercase;
+          color: rgba(183, 200, 232, 0.7);
+        }
+
+        .header-container h2 {
+          margin: 0;
+          font-size: 1.08rem;
+          letter-spacing: 0.03em;
+          color: var(--vscode-sideBar-foreground);
+        }
+
+        .header-toolbar {
+          display: none;
+          align-items: center;
+          justify-content: flex-end;
+          gap: 6px;
+          width: 90%;
+          margin: -14px 4px 12px;
+          padding: 4px 16px 4px 12px;
+          border-radius: 10px;
+          background: rgba(12, 20, 38, 0);
+          border: 1px solid rgba(111, 166, 255, 0);
+          backdrop-filter: blur(4px);
+          position: relative;
+          z-index: 20;
+        }
+
+        .icon-button {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          border-radius: 10px;
+          padding: 6px 10px;
+          font-size: 0.82rem;
+          font-weight: 500;
+          border: 1px solid transparent;
+          cursor: pointer;
+          transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+          color: var(--vscode-foreground);
+          background: rgba(255, 255, 255, 0.03);
+        }
+
+        .icon-button svg {
+          width: 18px;
+          height: 18px;
+        }
+
+        .icon-button--ghost {
+          border-color: rgba(255, 255, 255, 0.05);
+          background: rgba(0, 0, 0, 0.15);
+        }
+
+        .icon-button--ghost:hover {
+          border-color: rgba(111, 167, 255, 0.4);
+          background: rgba(111, 167, 255, 0.12);
+        }
+
+        .sr-only {
+          position: absolute;
+          width: 1px;
+          height: 1px;
+          padding: 0;
+          margin: -1px;
+          overflow: hidden;
+          clip: rect(0, 0, 0, 0);
+          white-space: nowrap;
+          border: 0;
+        }
+
+        .menu-button {
+          background: none;
+          border: none;
+          font-size: 18px;
+          cursor: pointer;
+          padding: 4px 8px;
+          color: var(--vscode-foreground);
+        }
+        
+        .dropdown-menu {
+          position: absolute;
+          right: 12px;
+          top: calc(100% + 6px);
+          background-color: var(--vscode-dropdown-background);
+          border: 1px solid var(--vscode-dropdown-border);
+          border-radius: 4px;
+          box-shadow: 0 0 8px rgba(0, 0, 0, 0.15);
+          display: none;
+          z-index: 250;
+          min-width: 180px;
+          max-width: min(220px, calc(100% - 10px));
+          width: auto;
+          padding: 6px 0;
+          backdrop-filter: blur(8px);
+        }
+        
+        .dropdown-menu.show {
+          display: block;
+        }
+        
+        .menu-item {
+          display: block;
+          padding: 8px 12px;
+          text-align: left;
+          width: 100%;
+          background: none;
+          border: none;
+          color: var(--vscode-foreground);
+          cursor: pointer;
+          white-space: normal; /* Allow text to wrap if necessary */
+          word-wrap: break-word; /* Wrap long words */
+          overflow-wrap: break-word; /* Ensure long words don't overflow */
+        }
+        
+        .menu-item:hover {
+          background-color: var(--vscode-list-hoverBackground);
+        }
+        
+        /* Styles for the search header */
+        .search-container {
+          display: none; /* Hidden by default, shown when there are thoughts */
+          position: sticky;
+          top: 0;
+          background-color: var(--vscode-sideBar-background);
+          z-index: 10;
+          padding: 8px 0;
+          margin-bottom: 10px;
+        }
+        
+        .search-bar {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 4px;
+          width: 100%;
+        }
+        
+        .search-input {
+          flex-grow: 1;
+          min-width: 120px;
+          padding: 4px 8px;
+          border-radius: 4px;
+          border: 1px solid var(--vscode-input-border);
+          background-color: var(--vscode-input-background);
+          color: var(--vscode-input-foreground);
+        }
+        
+        .search-buttons {
+          display: flex;
+          gap: 4px;
+        }
+        
+        .search-button {
+          padding: 4px 8px;
+          border-radius: 4px;
+          border: none;
+          cursor: pointer;
+          background-color: var(--vscode-button-secondaryBackground);
+          color: var(--vscode-button-secondaryForeground);
+        }
+        
+        .search-button:hover {
+          background-color: var(--vscode-button-secondaryHoverBackground);
+        }
+        
+        .back-button {
+          display: none; /* Hidden by default */
+          margin-right: 4px;
+        }
+        
+        /* Style for filter button */
+        .filter-button {
+          padding: 4px 8px;
+          border-radius: 4px;
+          border: none;
+          cursor: pointer;
+          background-color: var(--vscode-button-secondaryBackground);
+          color: var(--vscode-button-secondaryForeground);
+        }
+        
+        .filter-button:hover {
+          background-color: var(--vscode-button-secondaryHoverBackground);
+        }
+
+        .filter-button.active {
+          background-color: var(--vscode-button-background);
+          color: var(--vscode-button-foreground);
+        }
+        
+        /* Styles for filter dropdown */
+        .filter-dropdown {
+          position: fixed;                 
+          background-color: var(--vscode-dropdown-background);
+          border: 1px solid var(--vscode-dropdown-border);
+          border-radius: 4px;
+          box-shadow: 0 0 8px rgba(0,0,0,.15);
+          display: none;
+          z-index: 1000;                   
+          min-width: 160px;
+          width: max-content;             
+          white-space: nowrap;             
+        }
+        
+        .filter-dropdown.show {
+          display: block;
+        }
+        
+        .filter-item {
+          display: block;
+          padding: 6px 10px;
+          text-align: left;
+          width: 100%;
+          background: none;
+          border: none;
+          color: var(--vscode-foreground);
+          cursor: pointer;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        
+        .filter-item:hover {
+          background-color: var(--vscode-list-hoverBackground);
+        }
+        
+        .filter-item.active {
+          background-color: var(--vscode-list-activeSelectionBackground);
+          color: var(--vscode-list-activeSelectionForeground);
+        }
+        
+        /* Add Thought Button Styles */
+        .add-thought-button {
+          padding: 4px 8px;
+          border-radius: 4px;
+          border: none;
+          cursor: pointer;
+          background-color: var(--vscode-button-background);
+          color: var(--vscode-button-foreground);
+          font-size: 16px;
+          font-weight: bold;
+          min-width: 32px;
+          height: 28px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        
+        .add-thought-button:hover {
+          background-color: var(--vscode-button-hoverBackground);
+        }
+        
+        /* Multi-select checkbox styles */
+        .thought-checkbox {
+          width: 12px;
+          height: 12px;
+          margin-right: 6px;
+          cursor: pointer;
+          flex-shrink: 0;
+          accent-color: var(--vscode-button-background);
+        }
+        
+        .delete-selected-container {
+          position: sticky;
+          top: 0;
+          background-color: var(--vscode-sideBar-background);
+          z-index: 15;
+          padding: 8px 0;
+          margin-bottom: 8px;
+          border-bottom: 1px solid var(--vscode-widget-shadow);
+          display: none;
+          justify-content: space-between;
+          align-items: center;
+        }
+        
+        .delete-selected-container.show {
+          display: flex;
+        }
+        
+        .delete-selected-info {
+          font-size: 0.9em;
+          color: var(--vscode-descriptionForeground);
+        }
+        
+        .delete-selected-button {
+          padding: 4px 12px;
+          border-radius: 4px;
+          border: none;
+          cursor: pointer;
+          background-color: var(--vscode-button-background);
+          color: var(--vscode-button-foreground);
+          font-size: 0.9em;
+        }
+        
+        .delete-selected-button:hover {
+          background-color: var(--vscode-button-hoverBackground);
+        }
+        
+        /* Confirmation modal styles */
+        .confirmation-modal {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background-color: rgba(0, 0, 0, 0.5);
+          display: none;
+          justify-content: center;
+          align-items: center;
+          z-index: 1000;
+        }
+        
+        .confirmation-modal.show {
+          display: flex;
+        }
+        
+        .confirmation-content {
+          background-color: var(--vscode-editor-background);
+          border: 1px solid var(--vscode-widget-border);
+          border-radius: 6px;
+          padding: 20px;
+          max-width: 400px;
+          width: 90%;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        
+        .confirmation-title {
+          font-size: 1.1em;
+          font-weight: bold;
+          margin-bottom: 12px;
+          color: var(--vscode-foreground);
+        }
+        
+        .confirmation-message {
+          margin-bottom: 20px;
+          color: var(--vscode-descriptionForeground);
+        }
+        
+        .confirmation-buttons {
+          display: flex;
+          gap: 8px;
+          justify-content: flex-end;
+        }
+        
+        .confirmation-button {
+          padding: 6px 16px;
+          border-radius: 4px;
+          border: none;
+          cursor: pointer;
+          font-size: 0.9em;
+        }
+        
+        .confirmation-button.cancel {
+          background-color: var(--vscode-button-secondaryBackground);
+          color: var(--vscode-button-secondaryForeground);
+        }
+        
+        .confirmation-button.cancel:hover {
+          background-color: var(--vscode-button-secondaryHoverBackground);
+        }
+        
+        .confirmation-button.delete {
+          background-color: var(--vscode-button-background);
+          color: var(--vscode-button-foreground);
+        }
+        
+        .confirmation-button.delete:hover {
+          background-color: var(--vscode-button-hoverBackground);
+        }
+        
+        /* Existing styles */
+        .thought { 
+          padding: 8px; 
+          margin-bottom: 10px; 
+          border-left: 3px solid var(--vscode-editor-foreground); 
+          border-top: 1px solid rgba(255, 255, 255, 0.08);
+          border-right: 1px solid rgba(255, 255, 255, 0.08);
+          border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+          background-color: var(--vscode-sideBar-background); 
+          border-radius: 4px; 
+        }
+        .thought:hover { background-color: var(--vscode-list-hoverBackground); }
+        .thought-header { 
+          display: flex; 
+          flex-wrap: wrap;
+          gap: 8px;
+          justify-content: space-between; 
+          align-items: center;
+          cursor: pointer;
+        }
+        .thought-expander {
+          margin-right: 8px;
+          transition: transform 0.2s;
+        }
+        .thought-content {
+          display: none;
+          margin-top: 8px;
+          border-top: 1px solid var(--vscode-widget-shadow);
+          padding-top: 8px;
+        }
+        .thought.expanded .thought-expander {
+          transform: rotate(90deg);
+        }
+        .thought.expanded .thought-content {
+          display: block;
+        }
+        .thought-type { 
+          font-weight: bold;
+        }
+        .thought-actions { 
+          display: flex;
+          margin-left: auto;
+        }
+        .thought-actions button { 
+          background: none; 
+          border: none; 
+          cursor: pointer; 
+          color: var(--vscode-foreground); 
+          opacity: 0.6; 
+          padding: 2px 4px; 
+          font-size: 1.2em; 
+        }
+        .thought-actions button:hover { opacity: 1; }
+        .thought-text { margin: 5px 0; }
+        .thought-priority {
+          font-weight: 500;
+          font-size: 0.72rem;
+          margin-bottom: 4px;
+          padding: 2px 8px;
+          border-radius: 999px;
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          letter-spacing: 0.02em;
+          border: 1px solid transparent;
+        }
+
+        .thought-priority .priority-dot {
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background-color: currentColor;
+        }
+
+        .thought-priority .priority-label-text {
+          line-height: 1.1;
+        }
+
+        .thought-priority.priority-low {
+          background: rgba(46, 204, 113, 0.08);
+          color: #29b567;
+          border-color: rgba(46, 204, 113, 0.25);
+        }
+
+        .thought-priority.priority-moderate {
+          background: rgba(241, 196, 15, 0.1);
+          color: #b88c0d;
+          border-color: rgba(241, 196, 15, 0.25);
+        }
+
+        .thought-priority.priority-high {
+          background: rgba(231, 76, 60, 0.12);
+          color: #c44133;
+          border-color: rgba(231, 76, 60, 0.25);
+        }
+
+        .thought-priority.priority-default {
+          background: rgba(111, 166, 255, 0.08);
+          color: rgba(173, 201, 255, 0.9);
+          border-color: rgba(111, 166, 255, 0.22);
+        }
+        .thought-status {
+          font-weight: 500;
+          font-size: 0.72rem;
+          margin-bottom: 8px;
+          padding: 2px 8px;
+          border-radius: 999px;
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          letter-spacing: 0.02em;
+          border: 1px solid transparent;
+        }
+        .thought-status.status-open {
+          background: rgba(46, 204, 113, 0.08);
+          color: #29b567;
+          border-color: rgba(46, 204, 113, 0.25);
+        }
+        .thought-status.status-in-progress {
+          background: rgba(52, 152, 219, 0.12);
+          color: #65b9ff;
+          border-color: rgba(52, 152, 219, 0.24);
+        }
+        .thought-status.status-blocked {
+          background: rgba(241, 196, 15, 0.1);
+          color: #d1a21a;
+          border-color: rgba(241, 196, 15, 0.25);
+        }
+        .thought-status.status-closed {
+          background: rgba(155, 89, 182, 0.12);
+          color: #c9a0dc;
+          border-color: rgba(155, 89, 182, 0.25);
+        }
+        .thought-status.status-obsolete {
+          background: rgba(149, 165, 166, 0.12);
+          color: #c8d0d4;
+          border-color: rgba(149, 165, 166, 0.25);
+        }
+        .thought-meta { 
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+        }
+        .thought-meta span {
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          max-width: 100%;
+        }
+        .thought-snippet { white-space: pre; background-color: var(--vscode-editor-background); padding: 5px; border-radius: 3px; margin-top: 5px; max-height: 150px; overflow-y: auto; }
+        #initial-state { text-align: center; margin-top: 20px; }
+        button { background-color: var(--vscode-button-background); color: var(--vscode-button-foreground); border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; }
+        button:hover { background-color: var(--vscode-button-hoverBackground); }
+        
+        .file-link {
+          background: none;
+          border: none;
+          color: var(--vscode-textLink-foreground);
+          cursor: pointer;
+          text-decoration: underline;
+          padding: 0;
+          font-size: inherit;
+          font-family: inherit;
+        }
+        
+        .file-link:hover {
+          color: var(--vscode-textLink-activeForeground);
+        }
+        
+        .search-title {
+          display: none;
+          margin-top: 0;
+          margin-bottom: 10px;
+          font-size: 1em;
+          font-weight: normal;
+          color: var(--vscode-descriptionForeground);
+        }
+
+        .toolbar-button {
+          background: none;
+          border: none;
+          font-size: 16px;
+          cursor: pointer;
+          padding: 4px 8px;
+          color: var(--vscode-foreground);
+          opacity: 0.8;
+          transition: opacity 0.2s;
+        }
+        
+        .toolbar-button:hover {
+          opacity: 1;
+        }
+
+        .load-more-button {
+          background-color: var(--vscode-button-secondaryBackground);
+          color: var(--vscode-button-secondaryForeground);
+          border: none;
+          padding: 6px 12px;
+          border-radius: 4px;
+          cursor: pointer;
+        }
+        
+        .load-more-button:hover {
+          background-color: var(--vscode-button-secondaryHoverBackground);
+        }
+        
+        .load-more-button:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
+        .pagination-controls {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          gap: 10px;
+        }
+        
+        .pagination-button {
+          background-color: var(--vscode-button-secondaryBackground);
+          color: var(--vscode-button-secondaryForeground);
+          border: none;
+          padding: 4px 10px;
+          border-radius: 4px;
+          cursor: pointer;
+          font-size: 14px;
+        }
+        
+        .pagination-button:hover:not([disabled]) {
+          background-color: var(--vscode-button-secondaryHoverBackground);
+        }
+        
+        .pagination-button[disabled] {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+        
+        .pagination-text {
+          font-size: 13px;
+          color: var(--vscode-foreground);
+        }
+        
+        .page-selector {
+          padding: 4px;
+          background-color: var(--vscode-dropdown-background);
+          color: var(--vscode-dropdown-foreground);
+          border: 1px solid var(--vscode-dropdown-border);
+          border-radius: 4px;
+        }
+        
+        /* Loading spinner container */
+        .loading-spinner-container {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          padding: 40px 20px;
+          text-align: center;
+        }
+
+        .loading-spinner {
+          width: 40px;
+          height: 40px;
+          border: 3px solid rgba(111, 166, 255, 0.2);
+          border-top-color: rgba(111, 166, 255, 0.8);
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+          margin-bottom: 16px;
+        }
+
+        .loading-text {
+          color: var(--vscode-descriptionForeground);
+          font-size: 0.9em;
+        }
+
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }

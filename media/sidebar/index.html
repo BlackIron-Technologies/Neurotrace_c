@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NeuroTrace</title>
+  <link rel="stylesheet" href="{{styleUri}}">
+</head>
+<body>
+<!-- Backend status message -->
+      <div id="backend-status" style="display: none; padding: 16px; margin: 12px 0; border-radius: 8px; background: rgba(200, 100, 50, 0.1); border: 1px solid rgba(200, 100, 50, 0.3);">
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          <div>
+            <div style="font-weight: 600; font-size: 0.95em; margin-bottom: 4px;">Backend Not Available</div>
+            <div style="font-size: 0.85em; color: var(--vscode-descriptionForeground); line-height: 1.4;">
+              NeuroTrace requires backend components (up to 250 MB) to function.
+            </div>
+          </div>
+        </div>
+        <button id="download-backend-button" style="width: 100%; padding: 8px 16px; border-radius: 6px; background: var(--vscode-button-background); color: var(--vscode-button-foreground); border: none; cursor: pointer; font-weight: 500; font-size: 0.9em;">
+          Download Backend
+        </button>
+        <div style="margin-top: 8px; font-size: 0.8em; color: var(--vscode-descriptionForeground); text-align: center;">
+          Platform: {{platformName}} • Version: {{extensionVersion}}
+        </div>
+      </div>
+
+      <!-- Loading spinner -->
+      <div id="loading-spinner" class="loading-spinner-container" style="display: none;">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Loading...</div>
+      </div>
+
+      <!-- New header with dropdown menu -->
+      <div class="header-container" id="header-container" style="display: none;">
+        <div class="header-title">
+          <div class="header-title__icon is-thought" id="sidebar-icon" aria-hidden="true">
+            <svg class="header-title__bulb" viewBox="0 0 24 24" fill="none">
+              <path d="M9.5 3a6.5 6.5 0 0 1 6.5 6.5c0 2-1 3.8-2.6 4.9-.5.4-.9 1.1-.9 1.9v.7h-5.8v-.7c0-.7-.3-1.4-.9-1.9A6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3z" fill="currentColor" opacity="0.85" />
+              <path d="M8.25 18h2.5v1.2h-2.5z" fill="currentColor" opacity="0.9" />
+              <path d="M8.25 20.4h2.5V22h-2.5z" fill="currentColor" opacity="0.9" />
+            </svg>
+            <svg class="header-title__shield" viewBox="0 0 24 24" fill="none">
+              <path d="M12 3.2l7 2.4v6.2c0 4.1-3 7.8-7 8.8-4-1-7-4.7-7-8.8V5.6l7-2.4z" stroke="currentColor" stroke-width="1.4" fill="none" />
+              <path d="M9.8 12.1l1.9 1.9 3.6-3.7" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </div>
+          <div class="header-title__copy">
+            <span class="header-eyebrow">NeuroTrace</span>
+            <h2 id="sidebar-title">Operational Memory</h2>
+          </div>
+        </div>
+      </div>
+
+      <div class="header-toolbar" id="header-toolbar">
+        <button id="refresh-button" class="icon-button icon-button--ghost toolbar-button" title="Refresh">
+          <span class="sr-only">Refresh</span>
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 5.5a6.5 6.5 0 0 1 11.1-2.2M15.9 4.5V1.8" />
+            <path d="M16 14.5a6.5 6.5 0 0 1-11.1 2.2M4.1 15.5v2.7" />
+            <path d="M3.5 13.3l2.3-2.3" />
+          </svg>
+        </button>
+        <button id="menu-button" class="icon-button icon-button--ghost menu-button" title="Options">
+          <span class="sr-only">Open options menu</span>
+          <svg viewBox="0 0 20 20" fill="currentColor">
+            <circle cx="10" cy="4" r="1.6" />
+            <circle cx="10" cy="10" r="1.6" />
+            <circle cx="10" cy="16" r="1.6" />
+          </svg>
+        </button>
+        <div id="dropdown-menu" class="dropdown-menu">
+          <button class="menu-item" id="encrypt-button">Encrypt Database</button>
+          <button class="menu-item" id="decrypt-button">Decrypt Database</button>
+          <button class="menu-item" id="advanced-export-button">Export</button>
+          <button class="menu-item" id="open-graph-button">Memory Graph</button>
+          <button class="menu-item" id="instruction-sync-button">Sync Instructions</button>
+          <button class="menu-item" id="advanced-button">Settings</button>
+        </div>
+      </div>
+
+      <!-- Usage counter/status for all users -->
+      <div id="usage-counter" style="display: none; text-align: center; margin-bottom: 10px; font-size: 0.9em; color: var(--vscode-descriptionForeground);">
+        <span id="usage-display">Loading...</span>
+      </div>
+
+      <!-- Modified search bar to include filter button -->
+      <div class="search-container" id="search-container">
+        <div class="search-bar">
+          <button id="back-button" class="search-button back-button" title="Back to all memories">
+            ←
+          </button>
+          <input type="text" id="search-input" class="search-input" placeholder="Search memories...">
+          <div class="search-buttons">
+            <button id="text-search" class="search-button" title="Text search">
+              Text
+            </button>
+            <button id="semantic-search" class="search-button" title="AI search">
+              AI
+            </button>
+            <div style="position: relative;">
+              <button id="filter-by-type" class="filter-button" title="Filter by type">
+                Filter
+              </button>
+              <div id="filter-dropdown" class="filter-dropdown">
+                <button class="filter-item" data-type="all">All Types</button>
+                <button class="filter-item" data-type="hypothesis">Hypothesis</button>
+                <button class="filter-item" data-type="decision">Decision</button>
+                <button class="filter-item" data-type="insight">Insight</button>
+                <button class="filter-item" data-type="task">Task</button>
+                <button class="filter-item" data-type="risk">Risk</button>
+                <button class="filter-item" data-type="discard">Discard</button>
+                <button class="filter-item" data-type="note">Note</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Add Memory Button -->
+        <div style="display: flex; justify-content: flex-end; margin-top: 8px;">
+          <button id="add-thought-button" class="add-thought-button" title="Add new memory">
+            +
+          </button>
+        </div>
+        
+        <h3 id="search-title" class="search-title"></h3>
+        <div id="active-filter" style="display: none; margin-top: 5px; font-style: italic;"></div>
+      </div>
+      
+      <div id="unlock-screen" style="display: none; text-align: center; margin-top: 20px;">
+        <h3>Database is Locked</h3>
+        <p>Unlock your memories here, or launch the Codex unlock flow in the integrated terminal.</p>
+        <div id="unlock-error-message" style="color: var(--vscode-errorForeground); margin-bottom: 10px; display: none;"></div>
+        <input type="password" id="passphrase-input" placeholder="Passphrase" />
+        <div style="display: flex; justify-content: center; gap: 8px; margin-top: 10px; flex-wrap: wrap;">
+          <button id="unlock-button">Unlock Here</button>
+          <button id="unlock-codex-button">Unlock for Codex</button>
+        </div>
+        <div style="margin-top: 10px; font-size: 0.9em; color: var(--vscode-descriptionForeground);">
+          Use <strong>Unlock for Codex</strong> when Codex is running in WSL and MCP reports that the database is locked.
+        </div>
+        <div id="attempt-counter" style="margin-top: 10px; font-size: 0.9em; color: var(--vscode-descriptionForeground);"></div>
+      </div>
+      
+      <div id="initial-state"></div>
+      
+      <!-- Multi-select delete bar -->
+      <div id="delete-selected-container" class="delete-selected-container">
+        <span id="delete-selected-info" class="delete-selected-info">0 selected</span>
+        <button id="delete-selected-button" class="delete-selected-button">Delete Selected</button>
+      </div>
+      
+      <div id="thoughts-list"></div>
+      
+      <!-- Improved pagination controls -->
+      <div id="pagination" style="display: none; text-align: center; margin: 10px 0;">
+        <div class="pagination-controls">
+          <button id="prev-page" class="pagination-button" disabled>&lt;</button>
+          <span id="pagination-info" class="pagination-text">Page 1 of 1</span>
+          <button id="next-page" class="pagination-button">&gt;</button>
+        </div>
+        <select id="page-selector" class="page-selector" style="display: none; margin-top: 8px;">
+          <option value="0">Page 1</option>
+        </select>
+      </div>
+
+      <!-- Confirmation Modal -->
+      <div id="confirmation-modal" class="confirmation-modal">
+        <div class="confirmation-content">
+          <div class="confirmation-title">Confirm Deletion</div>
+          <div id="confirmation-message" class="confirmation-message">
+            Are you sure you want to delete 1 memory?
+          </div>
+          <div class="confirmation-buttons">
+            <button class="confirmation-button cancel" id="cancel-delete">Cancel</button>
+            <button class="confirmation-button delete" id="confirm-delete">Delete</button>
+          </div>
+        </div>
+      </div>
+  <script src="{{scriptUri}}"></script>
+</body>
+</html>

@@ -1,62 +1,77 @@
 # NeuroTrace MCP
 
-## Persistent Memory for AI Agents That Lives With Your Code
-
-Persistent project memory for developers and coding agents inside the IDE.
-
----
-
-## See NeuroTrace In Action
+Local-first project memory for AI coding agents and developers.
 
 <video src="https://raw.githubusercontent.com/BlackIron-Technologies/Neurotrace_c/main/media/readme_optimized.mp4" autoplay loop muted playsinline controls preload="metadata" poster="https://raw.githubusercontent.com/BlackIron-Technologies/Neurotrace_c/main/media/sidebar-screenshot.png" width="960"></video>
 
-**Your agent starts every new chat with amnesia.**
+NeuroTrace gives coding agents a persistent, code-linked memory layer that lives with a repository instead of a single chat session. Agents can search prior decisions, retrieve file-scoped context, reuse task history, and save durable project knowledge while they work.
 
-NeuroTrace gives developers and coding agents a local-first, code-linked memory layer that survives across chats and sessions.
+## Features
 
+- Local workspace memory database
+- Optional SQLCipher database encryption
+- MCP tools for agent memory search, retrieval, creation, editing, and graph traversal
+- Automatic setup guidance for supported agent hosts
+- File-scoped memories linked to source paths and line numbers
+- Interactive graph view for exploring related project context
+- Offline-capable runtime with no hosted account requirement
 
-NeuroTrace helps agents and developers:
+## Local-First Model
 
-- Save high-signal memory during real work
-- Retrieve project context before coding
-- Reuse decisions, tasks, and insights across sessions
-- Keep memory attached to the codebase instead of the chat
+The open-source runtime is designed to run on the user's machine:
 
-> Built for long-running codebases, debugging, planning, architecture work, and agent-assisted development.
+- Project memories are stored in the local workspace.
+- The Python backend runs locally.
+- Optional encryption is handled locally with SQLCipher.
+- MCP setup files are generated into the workspace.
+- No hosted account service is required by the open-source runtime.
 
----
+See [docs/PRIVACY.md](docs/PRIVACY.md) for the privacy model.
+
+## Installation
+
+### VS Code Marketplace
+
+Install NeuroTrace from the VS Code Marketplace, then open the NeuroTrace sidebar and initialize the workspace database.
+
+### From Source
+
+```powershell
+npm install
+npm test
+npm run package
+```
+
+For release packaging and backend binary builds, see [docs/RELEASE.md](docs/RELEASE.md).
 
 ## Quick Start
 
-1. Install NeuroTrace from the VS Code Marketplace.
+1. Open a repository in VS Code.
 2. Open the NeuroTrace sidebar.
 3. Download the platform backend if prompted.
 4. Click **Initialize Database**.
-5. Let NeuroTrace generate the MCP setup and host-specific guidance for your workspace.
-6. Start a fresh agent chat and use NeuroTrace in that repo.
+5. Let NeuroTrace generate MCP setup files and host-specific guidance.
+6. Start a fresh agent chat in the same repository.
 
-Generated setup includes:
+Generated setup may include:
 
-- `.neurotrace/mcp/README.md` with ready-to-use MCP templates
+- `.neurotrace/mcp/README.md` with MCP templates
+- `.neurotrace/mcp/claude/claude.mcp.json` for Claude Code
 - `.cursor/rules/neurotrace.mdc` for Cursor when supported
 - `.github/copilot-instructions.md` for Copilot workflows in VS Code
-- automatic Codex MCP rebinding to the active workspace
+- Codex MCP rebinding for the active workspace
 
-More details: [walkthrough/init.md](walkthrough/init.md)
+More setup detail is in [walkthrough/init.md](walkthrough/init.md).
 
----
+## MCP Workflow
 
-## How It Works
+Typical agent flow:
 
-NeuroTrace gives coding agents a persistent memory layer they can query before acting and update after the work is done.
-
-**Typical workflow:**
-
-1. The agent receives a task.
-2. It checks NeuroTrace for prior decisions, tasks, and related context.
-3. It works with project history available inside the workspace.
-4. It saves the outcome as a structured memory.
-5. It links important context for future sessions.
+1. Check that the NeuroTrace database is available.
+2. Search existing memories before changing code.
+3. Retrieve file-scoped context for the current module.
+4. Save durable decisions, insights, tasks, risks, or root causes.
+5. Link related context so future sessions can recover the reasoning.
 
 Key MCP capabilities include:
 
@@ -66,59 +81,53 @@ Key MCP capabilities include:
 - Discover related memories and graph connections
 - Check database readiness before work begins
 
----
+## Repository Layout
 
-## What NeuroTrace Sets Up
+- `src/` - VS Code extension source
+- `bin/neurotrace.py` - local Python backend used by the extension
+- `compilation/` - backend build, release, and model provenance tooling
+- `compilation/onnx_model/` - pinned ONNX model artifacts for release builds
+- `docs/` - privacy and release documentation
+- `walkthrough/` - VS Code walkthrough content
+- `media/` - extension icons, screenshots, and runtime graph assets
 
-After initialization, NeuroTrace prepares the workspace for both humans and agents:
+## Development
 
-- Creates the local `.neurotrace` workspace directory
-- Stores the project memory database locally
-- Auto-configures supported agent hosts where possible
-- Generates MCP setup files under `.neurotrace/mcp/`
-- Generates host-specific guidance such as `.cursor/rules/neurotrace.mdc` or `.github/copilot-instructions.md`
+```powershell
+npm install
+npm run compile
+npm test
+```
 
-For client-specific setup and troubleshooting:
+The test command compiles TypeScript, lint-checks extension code, validates Python syntax, and smoke-tests the bundled ONNX model.
 
-- `.neurotrace/mcp/README.md`
-- [walkthrough/init.md](walkthrough/init.md)
+Useful release checks:
 
----
+```powershell
+npm audit
+npm audit --omit=dev
+npm run package
+npx @vscode/vsce ls
+.\compilation\fetch-onnx-model.ps1
+```
 
-## Interactive Graph
+## Model And Third-Party Notices
 
-NeuroTrace also includes a graph view for exploring connected project memory.
+NeuroTrace uses the `sentence-transformers/all-MiniLM-L6-v2` ONNX model for local semantic search. The bundled model provenance is documented in [compilation/onnx_model/PROVENANCE.md](compilation/onnx_model/PROVENANCE.md), and third-party notices are tracked in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
-![Graph](media/graph-screenshot.png)
+## Contributing
 
----
+Contributions are welcome. Start with [CONTRIBUTING.md](CONTRIBUTING.md), [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md), and [SECURITY.md](SECURITY.md).
 
-## Privacy And Security
+## Contributors
 
-For transparency, security-critical code is open source in our [GitHub repository](https://github.com/BlackIron-Technologies/Neurotrace_c).
-
-- 100% local-first storage
-- Encrypted database support (SQLCipher3, AES-256 at rest)
-- Optional anonymous telemetry
-- Works offline
-
-See also:
-
-- [docs/PRIVACY.md](docs/PRIVACY.md)
-- [docs/TELEMETRY.md](docs/TELEMETRY.md)
-
----
+- [CastleOneX](https://github.com/CastleOneX)
 
 ## Support
 
-- **X (Twitter):** [@NeuroTraceVsc](https://x.com/NeuroTraceVsc)
-- **Email:** [neuro_support@blackironhq.com](mailto:neuro_support@blackironhq.com)
+- Open an issue: [GitHub Issues](https://github.com/BlackIron-Technologies/Neurotrace_c/issues)
+- X: [@NeuroTraceVsc](https://x.com/NeuroTraceVsc)
 
 ## License
 
-NeuroTrace uses a hybrid licensing model: security-critical code is open source, while premium features remain proprietary. See [LICENSE.md](LICENSE.md) for complete terms.
-
----
-
-> Built to remember.  
-> © 2026 BlackIron Technologies Ltd. All rights reserved.
+NeuroTrace is released under the [MIT License](LICENSE.md).

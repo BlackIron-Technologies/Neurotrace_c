@@ -1,0 +1,40 @@
+# Build output
+/dist/
+/out/
+*.vsix
+
+# Dependencies
+/node_modules/
+
+# Editor and local agent config
+/.cursor/
+/.codex/
+/.vscode/
+/.vscode-test/
+/.claude/
+/AGENTS.md
+/.agents/
+
+# Local project data
+/.neurotrace/
+/NeuroTrace.code-workspace
+
+# Python backend artifacts
+/bin/build/
+/bin/onnx_model/
+/bin/__pycache__/
+/bin/.pytest_cache/
+/bin/*.pyc
+/bin/*.pyo
+/bin/*.spec.bak
+/compilation/__pycache__/
+/onnx_model/
+*.Zone.Identifier
+
+# GitHub metadata: keep public automation and contribution templates trackable.
+/.github/*
+!/.github/workflows/
+!/.github/workflows/**
+!/.github/ISSUE_TEMPLATE/
+!/.github/ISSUE_TEMPLATE/**
+!/.github/pull_request_template.md
