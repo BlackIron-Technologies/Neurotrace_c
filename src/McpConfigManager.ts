@@ -1,5 +1,6 @@
 import { toForwardSlashes, toWslPath, buildStdioMcpConfig, buildGrokToml, quoteBashArg, buildCodexWindowsToml, buildCodexWslToml, buildCodexWindowsViaWslToml, upsertTomlBlock, upsertTomlTable, upsertTomlScalarInTable } from './mcp/config/templates';
 import { buildAgentsReadme } from './mcp/config/guide';
+import { selectCodexBackendCommand } from './mcp/config/codexCommand';
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -124,12 +125,7 @@ function isCodexInstalledInWsl(): boolean {
 }
 
 async function resolveCodexWslCommandPath(context: vscode.ExtensionContext): Promise<string> {
-    if (os.platform() === 'win32') {
-        const executable = getBackendExecutablePath(context);
-        if (!executable?.toLowerCase().endsWith('.exe')) { throw new Error('Install the Windows NeuroTrace backend before configuring MCP'); }
-        return executable;
-    }
-    return vscode.Uri.joinPath(context.extensionUri, 'bin', 'neurotrace.py').fsPath;
+    return selectCodexBackendCommand(os.platform(), getBackendExecutablePath(context));
 }
 
 export async function getCodexUnlockTerminalLaunch(
