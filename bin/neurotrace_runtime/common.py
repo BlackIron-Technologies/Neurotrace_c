@@ -15,7 +15,7 @@ import time
 from typing import Optional
 import uuid
 
-BACKEND_VERSION = "1.3.1"
+BACKEND_VERSION = "1.3.2"
 STANDALONE_DAEMON_INFO_FILENAME = "standalone_daemon.json"
 
 

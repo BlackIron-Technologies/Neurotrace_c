@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { PythonServerManager } from '../PythonServerManager';
+import { workspaceInfo } from './workspaceInfo';
 
 export class SettingsController implements vscode.Disposable {
   private timer?: NodeJS.Timeout;
@@ -11,6 +12,14 @@ export class SettingsController implements vscode.Disposable {
 
   dispose() { this.disposed = true; if (this.timer) { clearInterval(this.timer); } }
   private post(value: unknown) { if (!this.disposed) { void this.view.postMessage(value); } }
+
+  private async workspace() {
+    try { this.post({ type: 'workspace', workspace: await workspaceInfo(this.backend) }); }
+    catch (error) {
+      this.post({ type: 'workspace', workspace: { name: vscode.workspace.workspaceFolders?.[0]?.name || 'Current workspace', local: { ready: false, count: 0, message: 'Could not check local memories. Check the NeuroTrace backend, then try again.' } } });
+      this.post({ type: 'error', message: error instanceof Error ? error.message : String(error) });
+    }
+  }
 
   private async refresh() {
     if (this.busy || this.disposed) { return; }
@@ -25,6 +34,9 @@ export class SettingsController implements vscode.Disposable {
     if (message.type === 'ready') {
       this.post({ type: 'editor', ownerName: process.env.USERNAME || process.env.USER || 'Owner', projectName: vscode.workspace.workspaceFolders?.[0]?.name || 'Shared project', showCodeIcons: vscode.workspace.getConfiguration('neurotrace').get('showCodeIcons', true) });
       await this.refresh();
+      await this.workspace();
+      try { this.post({ type: 'hosting', hosting: await this.backend.sendCommand('sync_host_status') }); }
+      catch (error) { this.post({ type: 'error', message: error instanceof Error ? error.message : String(error) }); }
       if (!this.timer) { this.timer = setInterval(() => { void this.refresh(); }, 2000); }
       return;
     }
@@ -33,6 +45,9 @@ export class SettingsController implements vscode.Disposable {
     this.post({ type: 'busy', busy: true });
     try {
       switch (message.type) {
+        case 'workspace-info':
+          await this.workspace();
+          break;
         case 'save-editor':
           await vscode.workspace.getConfiguration('neurotrace').update('showCodeIcons', Boolean(message.enabled), vscode.ConfigurationTarget.Global);
           break;
@@ -45,6 +60,9 @@ export class SettingsController implements vscode.Disposable {
             code = new URLSearchParams(invitation.hash.slice(1)).get('join') || '';
             serverUrl = invitation.origin;
           }
+          if (!vscode.workspace.workspaceFolders?.length) { throw new Error('Open a project folder before connecting.'); }
+          const database = await this.backend.sendCommand<{ status: string }>('check_db_status');
+          if (database.status === 'NO_DB') { await this.backend.sendCommand('init'); }
           const result = await this.backend.sendCommand<{ import_report?: unknown }>('sync_connect', {
             server_url: serverUrl, mode: message.mode, code, setup_key: String(message.setupKey || ''),
             name: String(message.name || ''), network_name: String(message.networkName || ''),
@@ -113,7 +131,7 @@ export class SettingsController implements vscode.Disposable {
         case 'create-project': {
           const result = await this.backend.sendCommand<{ invitation: string; name: string }>('sync_manage', { action: 'create_project', data: { name: String(message.name) } });
           await vscode.env.clipboard.writeText(result.invitation);
-          this.post({ type: 'notice', message: result.name + ' created. Open another workspace and paste the copied connection link to use it.' });
+          this.post({ type: 'notice', message: result.name + ' created; its link is copied and expires in one hour. Open the other workspace → Team sync → I have a project invitation. This workspace stays connected to its current project.' });
           break;
         }
         case 'activity':
@@ -130,8 +148,8 @@ export class SettingsController implements vscode.Disposable {
           this.post({ type: 'hosting', hosting: await this.backend.sendCommand('sync_host_start', { port: Number(message.port) }) });
           break;
         }
-        case 'host-verify':
-          this.post({ type: 'tunnel', tunnel: await this.backend.sendCommand('sync_host_verify', { public_url: String(message.publicUrl || '') }) });
+        case 'server-check':
+          this.post({ type: 'server-checked', result: await this.backend.sendCommand('sync_server_info', { server_url: String(message.serverUrl || ''), local: Boolean(message.local) }) });
           break;
         case 'open-tunnel-setup':
           await vscode.env.openExternal(vscode.Uri.parse('https://dash.cloudflare.com/?to=/:account/networks/tunnels'));
@@ -142,11 +160,16 @@ export class SettingsController implements vscode.Disposable {
           break;
         }
         case 'open-doc': {
-          const paths: Record<string, string> = { readme: 'README.md', privacy: 'docs/PRIVACY.md', sync: 'docs/CLOUD_DEPLOYMENT.md', license: 'LICENSE.md' };
+          const paths: Record<string, string> = { readme: 'README.md', license: 'LICENSE.md' };
           if (paths[message.doc]) {
             const document = await vscode.workspace.openTextDocument(vscode.Uri.joinPath(this.context.extensionUri, paths[message.doc]));
             await vscode.window.showTextDocument(document);
           }
+          break;
+        }
+        case 'open-reference': {
+          const references: Record<string, string> = { docker: 'https://docs.docker.com/engine/install/', cloudflare: 'https://developers.cloudflare.com/tunnel/get-started/' };
+          if (references[String(message.reference)]) { await vscode.env.openExternal(vscode.Uri.parse(references[String(message.reference)])); }
           break;
         }
       }

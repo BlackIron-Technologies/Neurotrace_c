@@ -47,6 +47,9 @@ def execute_backend_command(server, command, payload):
     if command == 'sync':
         return server.sync_control(**payload)
     with server.command_lock:
+        if command == 'sync_server_info':
+            from neurotrace_sync.server_info import inspect_server
+            return inspect_server(**payload)
         if command in ("unlock_database", "encrypt_database", "decrypt_database") and server.sync_worker:
             server.sync_worker.stop()
             server.sync_worker = None

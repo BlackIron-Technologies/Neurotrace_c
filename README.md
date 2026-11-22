@@ -28,9 +28,9 @@ The open-source runtime is designed to run on the user's machine:
 - MCP setup files are generated into the workspace.
 - No hosted account service is required by the open-source runtime.
 
-See [docs/PRIVACY.md](docs/PRIVACY.md) for the privacy model.
+Open **NeuroTrace Settings → Editor & privacy** for the privacy model.
 
-Open **NeuroTrace Settings → Team sync** to join a team or create a network. The **Server** tab starts a local server and verifies the public URL supplied by your administrator. Tunnel creation and operation remain with the administrator. See [Team sync](docs/TEAM_SYNC.md) for deployment, permissions and recovery.
+Open **NeuroTrace Settings → Team sync** and follow the guided setup. Use a project invitation to join, or choose **Set up sharing for my team** to prepare a server and create a network. The assistant guides server verification, names, local-memory import and final confirmation. Deployment instructions are built into the panel. Tunnel creation and operation remain with the administrator. Additional projects reuse the same network, server and tunnel.
 
 ## Installation
 

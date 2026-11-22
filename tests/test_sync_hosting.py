@@ -6,9 +6,30 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'bin'))
 from neurotrace_sync.endpoints import PublicEndpoint
+from neurotrace_sync.server_info import inspect_server
 
 
 class TunnelSetupTests(unittest.TestCase):
+    @patch('neurotrace_sync.server_info.Remote')
+    def test_server_check_reports_existing_network_without_claiming_it(self, remote):
+        remote.return_value.request.return_value = {'instance_id': 'ours', 'protocol': 1, 'initialized': True}
+        self.assertEqual(inspect_server('https://memory.example.com'), {'server_url': 'https://memory.example.com', 'initialized': True})
+        remote.return_value.request.assert_called_once_with('/v1/status', timeout=5)
+
+    @patch('neurotrace_sync.server_info.Remote')
+    def test_server_check_rejects_incompatible_endpoint(self, remote):
+        remote.return_value.request.return_value = {'initialized': False}
+        with self.assertRaisesRegex(ValueError, 'compatible'):
+            inspect_server('https://memory.example.com')
+
+    @patch('neurotrace_sync.hosting.verify')
+    @patch('neurotrace_sync.server_info.Remote')
+    def test_local_setup_requires_endpoint_identity_check(self, remote, verify):
+        verify.side_effect = ValueError('different server')
+        with self.assertRaisesRegex(ValueError, 'different server'):
+            inspect_server('https://memory.example.com', local=True)
+        remote.assert_not_called()
+
     @patch('neurotrace_sync.endpoints.Remote')
     def test_public_endpoint_must_match_this_server(self, remote):
         remote.return_value.request.side_effect = [{'instance_id': 'ours'}, {'instance_id': 'another'}]
