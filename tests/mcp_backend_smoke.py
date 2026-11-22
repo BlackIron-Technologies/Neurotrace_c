@@ -35,7 +35,7 @@ def main():
         try:
             call('initialize')
             definitions = {item['name'] for item in call('tools/list')['tools']}
-            assert {'neurotrace_sync', 'neurotrace_getThought', 'neurotrace_host', 'neurotrace_connect', 'neurotrace_team'} <= definitions
+            assert {'neurotrace_sync', 'neurotrace_getThought', 'neurotrace_host', 'neurotrace_connect', 'neurotrace_team', 'neurotrace_repository'} <= definitions
             status = tool('neurotrace_sync', {'action': 'status'})
             assert status['state'] == 'unconfigured', status
             created = tool('neurotrace_addThought', {'text': 'Packaged MCP check', 'type': 'note'})

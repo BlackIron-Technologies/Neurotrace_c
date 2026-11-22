@@ -139,14 +139,19 @@ class Replica:
 
     def apply_page(self, page):
         with self.conn:
+            self.conn.execute('BEGIN IMMEDIATE')
+            cursor = self.cursor()
             for event in page["events"]:
+                if event['seq'] <= cursor:
+                    continue
                 payload = event["payload"]
                 state = "recovered" if payload["outcome"] == "deleted" else "delivered"
                 self.conn.execute("UPDATE sync_outbox SET state=?,server_seq=? WHERE op_id=?", (state, event['seq'], event["operation"]))
                 self.apply_record(payload["record"], event['seq'])
                 for edge in payload.get("relations", []):
                     self.apply_record(edge, event['seq'])
-            self.conn.execute("UPDATE sync_binding SET cursor=? WHERE project=?", (page["cursor"], self.project))
+                cursor = event['seq']
+            self.conn.execute("UPDATE sync_binding SET cursor=? WHERE project=?", (max(cursor, page["cursor"]), self.project))
 
     def initialize(self, snapshot, publish=False):
         if self.cursor() or self.conn.execute("SELECT 1 FROM sync_canonical LIMIT 1").fetchone():

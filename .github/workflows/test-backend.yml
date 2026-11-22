@@ -7,6 +7,9 @@ on:
       - 'compilation/neurotrace.py'
       - 'bin/**'
       - 'tests/**'
+      - 'src/mcp/**'
+      - 'src/McpConfigManager.ts'
+      - 'package*.json'
       - 'compilation/fetch-onnx-model.ps1'
       - 'compilation/smoke-onnx-model.py'
       - 'compilation/test_executable.py'
@@ -17,6 +20,9 @@ on:
       - 'compilation/neurotrace.py'
       - 'bin/**'
       - 'tests/**'
+      - 'src/mcp/**'
+      - 'src/McpConfigManager.ts'
+      - 'package*.json'
       - 'compilation/fetch-onnx-model.ps1'
       - 'compilation/smoke-onnx-model.py'
       - 'compilation/test_executable.py'
@@ -86,3 +92,16 @@ jobs:
           compilation/*.log
           compilation/test_*.db
         retention-days: 7
+
+  test-mcp-launchers:
+    name: Test context-aware MCP configuration
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci
+      - run: npm run compile
+      - run: node tests/check_mcp_launchers.cjs

@@ -46,6 +46,7 @@ class SyncControl:
         return result
 
     def get_thought(self, thought_id):
+        self.guard_repository()
         if not isinstance(thought_id, str) or not 0 < len(thought_id) <= 100:
             raise ValueError('Provide a valid thought_id')
         if self.conn is None:
@@ -72,6 +73,10 @@ class SyncControl:
                 return {**result, 'success': False, 'reason': 'memory_not_found'}
             if not result.get('project_id') or not result.get('enabled') or self.conn is None:
                 return {**result, 'success': False, 'reason': result['state'], 'retry_scheduled': False}
+            try:
+                self.guard_repository()
+            except ValueError:
+                return {**result, 'success': False, 'reason': 'repository_mismatch', 'retry_scheduled': False}
             self.sync_start()
             worker = self.sync_worker
             worker.wake_event.set()
@@ -89,7 +94,7 @@ class SyncControl:
                 if self.sync_worker is not worker:
                     return {**self.sync_status(thought_id), 'success': False, 'reason': 'sync_session_changed'}
                 result = self.sync_status(thought_id, cutoff)
-                if result['state'] in ('access_denied', 'incompatible_server', 'error'):
+                if result['state'] in ('access_denied', 'incompatible_server', 'error', 'repository_mismatch'):
                     return {**result, 'success': False, 'reason': result['state']}
                 if result['recovered_drafts']:
                     return {**result, 'success': False, 'reason': 'unaccepted_drafts'}

@@ -12,5 +12,5 @@ class BackendTool implements vscode.LanguageModelTool<Record<string, unknown>> {
 export function syncTools(server: PythonServerManager): [string, vscode.LanguageModelTool<any>][] {
   return [['neurotrace_sync', new BackendTool(server, 'sync')], ['neurotrace_getThought', new BackendTool(server, 'get_thought')],
     ['neurotrace_host', new BackendTool(server, 'host')], ['neurotrace_connect', new BackendTool(server, 'connect')],
-    ['neurotrace_team', new BackendTool(server, 'team')]];
+    ['neurotrace_team', new BackendTool(server, 'team')], ['neurotrace_repository', new BackendTool(server, 'sync_repository')]];
 }

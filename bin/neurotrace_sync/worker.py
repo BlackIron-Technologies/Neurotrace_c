@@ -7,6 +7,7 @@ import time
 import aiohttp
 
 from .profile import RemoteError, USER_AGENT
+from .repository import RepositoryMismatch
 
 
 class SyncWorker:
@@ -42,9 +43,15 @@ class SyncWorker:
         delay = 1
         while not self.stop_event.is_set():
             try:
-                async with aiohttp.ClientSession(headers={"Authorization": "Bearer " + self.token, "User-Agent": USER_AGENT},
+                with self.server.command_lock:
+                    self.server.guard_repository()
+                async with aiohttp.ClientSession(headers={"Authorization": "Bearer " + self.token, "User-Agent": USER_AGENT,
+                                                         'X-NeuroTrace-Repository': self.profile['repository']['id']},
                                                  timeout=aiohttp.ClientTimeout(total=15), trust_env=False) as session:
                     url = self.profile["server_url"] + "/v1/projects/" + self.profile["project_id"]
+                    info = await self.request(session, 'GET', self.profile['server_url'] + '/v1/status')
+                    if info.get('instance_id') != self.profile.get('server_instance_id') or 'repository_binding' not in info.get('capabilities', []):
+                        raise RepositoryMismatch('Server identity or repository protocol changed. Reconnect to the original server.')
                     async with session.ws_connect(url + "/ws", heartbeat=15, max_msg_size=8192) as socket:
                         self.state, self.error, delay = "live", "", 1
                         with self.server.command_lock:
@@ -97,6 +104,11 @@ class SyncWorker:
                                     raise ConnectionError("Realtime connection closed")
                             except asyncio.TimeoutError:
                                 pass
+            except (RepositoryMismatch, ValueError) as exc:
+                self.state, self.error = 'repository_mismatch', str(exc)
+                with self.server.command_lock:
+                    self.emit()
+                return
             except (aiohttp.ClientError, OSError, asyncio.TimeoutError, RemoteError) as exc:
                 if isinstance(exc, (RemoteError, aiohttp.WSServerHandshakeError)) and exc.status in (401, 403):
                     self.state = "access_denied"
@@ -125,6 +137,8 @@ class SyncWorker:
                 self.emit()
 
     async def request(self, session, method, url, data=None):
+        with self.server.command_lock:
+            self.server.guard_repository()
         async with session.request(method, url, json=data, allow_redirects=False) as response:
             if response.status != 200:
                 try:
@@ -142,6 +156,7 @@ class SyncWorker:
             with self.server.command_lock:
                 if self.stop_event.is_set():
                     return
+                self.server.guard_repository()
                 self.role = page["role"]
                 self.replica.apply_page(page)
                 if page["events"]:

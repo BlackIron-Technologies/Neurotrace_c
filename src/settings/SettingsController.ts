@@ -66,9 +66,11 @@ export class SettingsController implements vscode.Disposable {
           const result = await this.backend.sendCommand<{ import_report?: unknown }>('sync_connect', {
             server_url: serverUrl, mode: message.mode, code, setup_key: String(message.setupKey || ''),
             name: String(message.name || ''), network_name: String(message.networkName || ''),
-            project_name: String(message.projectName || ''), publish: Boolean(message.publish)
+            project_name: String(message.projectName || ''), publish: Boolean(message.publish),
+            confirm_legacy_repository: Boolean(message.confirmLegacy)
           });
           this.post({ type: 'connected', importReport: result.import_report });
+          await this.workspace();
           await vscode.commands.executeCommand('neurotrace.refreshSidebar');
           break;
         }
@@ -129,7 +131,7 @@ export class SettingsController implements vscode.Disposable {
           break;
         }
         case 'create-project': {
-          const result = await this.backend.sendCommand<{ invitation: string; name: string }>('sync_manage', { action: 'create_project', data: { name: String(message.name) } });
+          const result = await this.backend.sendCommand<{ invitation: string; name: string }>('sync_manage', { action: 'create_project', data: { name: String(message.name), repository_url: String(message.repositoryUrl || ''), workspace_scope: String(message.workspaceScope || '') } });
           await vscode.env.clipboard.writeText(result.invitation);
           this.post({ type: 'notice', message: result.name + ' created; its link is copied and expires in one hour. Open the other workspace → Team sync → I have a project invitation. This workspace stays connected to its current project.' });
           break;
@@ -151,6 +153,21 @@ export class SettingsController implements vscode.Disposable {
         case 'server-check':
           this.post({ type: 'server-checked', result: await this.backend.sendCommand('sync_server_info', { server_url: String(message.serverUrl || ''), local: Boolean(message.local) }) });
           break;
+        case 'preview-connection': {
+          let code = String(message.code || ''), serverUrl = String(message.serverUrl || '');
+          if (/^https?:/.test(code)) { const link = new URL(code); serverUrl = link.origin; code = new URLSearchParams(link.hash.slice(1)).get('join') || ''; }
+          const result = await this.backend.sendCommand('preview_connection', { server_url: serverUrl, code });
+          this.post({ type: 'invitation-preview', result, requestId: message.requestId });
+          break;
+        }
+        case 'protect-repository': {
+          if (!vscode.workspace.isTrusted) { throw new Error('Trust this workspace before protecting shared memory.'); }
+          const context = await this.backend.sendCommand<{ repository?: { origin: string; scope: string } }>('repository_context');
+          if (!context.repository) { throw new Error('Open the matching Git repository first.'); }
+          const choice = await vscode.window.showWarningMessage('Bind this existing shared project to ' + context.repository.origin + (context.repository.scope ? ' / ' + context.repository.scope : '') + '? Confirm only if its existing memories belong to this repository. Other repositories will be blocked.', { modal: true }, 'Protect project');
+          if (choice === 'Protect project') { await this.backend.sendCommand('sync_repository', { action: 'protect_project' }); await this.workspace(); this.post({ type: 'notice', message: 'Repository protection enabled. Different branches of this repository can synchronize.' }); }
+          break;
+        }
         case 'open-tunnel-setup':
           await vscode.env.openExternal(vscode.Uri.parse('https://dash.cloudflare.com/?to=/:account/networks/tunnels'));
           break;

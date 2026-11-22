@@ -1,7 +1,21 @@
 
+from pathlib import Path
+
+
+def validate_workspace_request(request, workspace):
+    supplied = request.get('workspace')
+    if not isinstance(supplied, str) or not Path(supplied).is_absolute() or not workspace or Path(supplied).resolve() != Path(workspace).resolve():
+        raise ValueError('MCP workspace mismatch or outdated client. Reconnect NeuroTrace from the intended workspace.')
+    if request.get('command') == 'set_workspace':
+        raise ValueError('An MCP connection cannot switch its workspace')
+
+
 COMMAND_MAPPING = {
     "sync_status": "sync_status",
     "get_thought": "get_thought",
+    'sync_repository': 'repository_control',
+    'repository_context': 'repository_context',
+    'preview_connection': 'preview_connection',
     "host": "host",
     "connect": "connect",
     "team": "team",
@@ -47,6 +61,10 @@ def execute_backend_command(server, command, payload):
     if command == 'sync':
         return server.sync_control(**payload)
     with server.command_lock:
+        if command in {'list', 'add_thought', 'edit', 'delete', 'search', 'semantic-search', 'suggest', 'get_thought',
+                       'graph-data', 'graph-insights', 'get_memories_by_file', 'sync_edit_context', 'sync_text_update',
+                       'add-relation', 'delete-relation', 'update-edge-type'}:
+            server.guard_repository()
         if command == 'sync_server_info':
             from neurotrace_sync.server_info import inspect_server
             return inspect_server(**payload)
@@ -80,5 +98,14 @@ def execute_backend_command(server, command, payload):
         if command in ("init", "unlock_database", "encrypt_database", "decrypt_database"):
             server.sync_start()
         if command == "init":
+            from neurotrace_sync.repository import workspace_repository, pin_database
+            if server.conn.execute('SELECT COUNT(*) FROM thoughts').fetchone()[0] == 0:
+                try:
+                    repository = workspace_repository(server.workspace_path)
+                except ValueError:
+                    repository = None
+                if repository:
+                    with server.conn:
+                        pin_database(server.conn, repository)
             server.build_faiss_index()
         return result

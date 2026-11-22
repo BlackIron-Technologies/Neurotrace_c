@@ -15,6 +15,14 @@ from .mcp_protocol import (
     MCP_TOOL_DEFINITIONS
 )
 
+def _validate_endpoint_workspace(info, workspace):
+    if info.get('protocol') != 2:
+        raise BackendCommandError('The NeuroTrace backend is outdated. Reload the IDE or restart the upgraded standalone backend.')
+    recorded = info.get('workspace')
+    if not recorded or not Path(recorded).is_absolute() or Path(recorded).resolve() != Path(workspace).resolve():
+        raise BackendCommandError('Saved MCP endpoint belongs to another workspace. Reconnect NeuroTrace in this project.')
+    return info
+
 class BackendCommandError(RuntimeError):
     """A reachable backend rejected a command."""
 
@@ -27,7 +35,9 @@ def _read_bridge_info(workspace_path: Optional[str]):
 
     info_path = Path(workspace_path) / ".neurotrace" / "backend_bridge.json"
     try:
-        return json.loads(info_path.read_text(encoding="utf-8"))
+        return _validate_endpoint_workspace(json.loads(info_path.read_text(encoding="utf-8")), workspace_path)
+    except BackendCommandError:
+        raise
     except Exception as exc:
         raise BridgeUnavailableError(
             "Open the NeuroTrace sidebar in your IDE and wait for the backend to start."
@@ -39,6 +49,7 @@ def _send_bridge_command(workspace_path: Optional[str], command: str, payload=No
     request = {
         "id": f"bridge-{uuid.uuid4().hex}",
         "token": bridge_info.get("token"),
+        'workspace': str(Path(workspace_path).resolve()),
         "command": command,
         "payload": payload or {},
     }
@@ -84,11 +95,12 @@ def _write_daemon_info(workspace_path: str, host: str, port: int, token: str) ->
     info_path.write_text(
         json.dumps(
             {
+                'protocol': 2,
                 "host": host,
                 "port": port,
                 "token": token,
                 "pid": os.getpid(),
-                "workspace": workspace_path,
+                "workspace": str(Path(workspace_path).resolve()),
             }
         ),
         encoding="utf-8",
@@ -112,7 +124,9 @@ def _read_daemon_info(workspace_path: Optional[str]):
 
     info_path = _get_daemon_info_path(workspace_path)
     try:
-        return json.loads(info_path.read_text(encoding="utf-8"))
+        return _validate_endpoint_workspace(json.loads(info_path.read_text(encoding="utf-8")), workspace_path)
+    except BackendCommandError:
+        raise
     except Exception as exc:
         raise DaemonUnavailableError(
             "NeuroTrace standalone daemon is not running for this workspace."
@@ -125,6 +139,7 @@ def _send_socket_command(
     request = {
         "id": f"socket-{uuid.uuid4().hex}",
         "token": endpoint_info.get("token"),
+        'workspace': endpoint_info.get('workspace'),
         "command": command,
         "payload": payload or {},
     }
@@ -184,6 +199,8 @@ def _ensure_standalone_daemon_running(workspace_path: Optional[str]):
         daemon_info = _read_daemon_info(workspace_path)
         _send_socket_command(daemon_info, "check_db_status", {})
         return daemon_info
+    except BackendCommandError:
+        raise
     except Exception:
         _remove_daemon_info(workspace_path)
 

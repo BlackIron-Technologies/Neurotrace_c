@@ -1,0 +1,13 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),esbuild=require('esbuild');
+const moduleValue={exports:{}};
+const code=esbuild.buildSync({entryPoints:['src/mcp/config/templates.ts'],bundle:true,platform:'node',format:'cjs',write:false}).outputFiles[0].text;
+vm.runInNewContext(code,{module:moduleValue,exports:moduleValue.exports});
+const api=moduleValue.exports, executable=process.env.NEUROTRACE_TEST_EXECUTABLE || 'C:/Program Files/NeuroTrace/neurotrace.exe';
+const parse=text=>({command:JSON.parse(text.match(/^command = (.+)$/m)[1]),args:JSON.parse(text.match(/^args = (.+)$/m)[1])});
+const windows=parse(api.buildCodexWindowsToml(executable,'.'));
+assert.equal(windows.args[2],'.');
+const wsl=parse(api.buildCodexWindowsViaWslToml(executable,'C:/DO-NOT-PIN-THIS-WORKSPACE',true));
+assert.equal(wsl.command,'wsl.exe');assert.ok(!JSON.stringify(wsl).includes('DO-NOT-PIN'));assert.ok(wsl.args.at(-1).includes('wslpath -w "$PWD"'));assert.ok(!wsl.args.at(-1).includes('--bridge-required'));
+const linux=parse(api.buildCodexWslToml(executable,'C:/DO-NOT-PIN',true));assert.equal(linux.command,'bash');assert.ok(linux.args.at(-1).includes('Use a native Linux'));
+const previous='[another_section]\nvalue = "preserve"\n';const updated=api.upsertTomlBlock(previous,api.buildCodexWindowsToml(executable,'.'));assert.ok(updated.startsWith(previous));assert.equal(api.upsertTomlBlock(updated,api.buildCodexWindowsToml(executable,'.')),updated);
+if(process.argv.includes('--json'))process.stdout.write(JSON.stringify(wsl));else console.log('PASS: context-aware MCP launchers, Windows/WSL isolation and configuration preservation.');

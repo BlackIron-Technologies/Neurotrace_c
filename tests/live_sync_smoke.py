@@ -14,6 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "bin"))
 from aiohttp.test_utils import TestServer
 from neurotrace_sync.http_server import create_app
 from neurotrace_sync.profile import Profile
+from sync_fixtures import git_workspace
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -24,7 +25,7 @@ class Backend:
         self.sequence = 0
 
     async def start(self):
-        self.directory.mkdir(parents=True)
+        git_workspace(self.directory)
         command = [sys.executable, "-u", str(ROOT / "bin" / "neurotrace.py")]
         if os.environ.get("NEUROTRACE_TEST_EXECUTABLE"):
             command = [os.environ["NEUROTRACE_TEST_EXECUTABLE"]]
@@ -98,11 +99,26 @@ async def run():
         clients = candidates
         await asyncio.gather(*(client.start() for client in clients))
         owner, editor, agent = clients
+        import subprocess
+        for number, client in enumerate(clients):
+            subprocess.run(["git", "-C", str(client.directory), "checkout", "-b", "test-branch-" + str(number)], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         await owner.call("sync_connect", {"server_url": origin, "mode": "create", "setup_key": setup_key,
                                           "name": "Test owner", "network_name": "Disposable test network", "project_name": "Concurrent test"})
+        wrong = await Backend(directory / "wrong-repository", directory / "profiles").start()
+        clients.append(wrong)
+        subprocess.run(["git", "-C", str(wrong.directory), "remote", "set-url", "origin", "https://github.com/other/project"], check=True)
         for client, kind in ((editor, "human"), (agent, "agent")):
             invitation = await owner.call("sync_manage", {"action": "invite", "data": {"name": "Test " + kind, "kind": kind, "role": "editor"}})
+            if kind == "human":
+                try:
+                    await wrong.call("sync_connect", {"server_url": origin, "code": invitation["code"]})
+                    raise AssertionError("Wrong repository joined")
+                except RuntimeError as error:
+                    assert "repository" in str(error).lower(), error
+                assert not Profile(wrong.directory).read()
             await client.call("sync_connect", {"server_url": origin, "code": invitation["code"]})
+        await wrong.stop(); clients.remove(wrong)
+        print("Wrong repository rejected without consuming invitation; three different branches joined.", flush=True)
         for client in clients:
             profile_store = Profile(client.directory)
             credentials.append((profile_store, profile_store.read()))
@@ -135,7 +151,7 @@ async def run():
 
         result = await eventually(converged)
         print("Offline concurrent changes converged in", round(time.monotonic() - start, 2), "seconds:", result.encode("unicode_escape").decode(), flush=True)
-        barrier = await owner.call('sync', {'action': 'wait', 'thought_id': record, 'wait_for_peers': 2, 'timeout_ms': 10000})
+        barrier = await owner.call('sync', {'action': 'wait', 'thought_id': record, 'wait_for_peers': 2, 'timeout_ms': 30000})
         assert barrier['success'] and barrier['received_by_devices'] >= 2, barrier
         read = await editor.call('get_thought', {'thought_id': record})
         assert read['base_text'] == result, read

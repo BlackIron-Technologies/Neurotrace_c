@@ -1,6 +1,6 @@
 from .common import (Optional, Path, json, os, socketserver, sys, threading, uuid)
 
-from .commands import execute_backend_command
+from .commands import execute_backend_command, validate_workspace_request
 
 class BridgeMixin:
     def _get_bridge_info_path(self) -> Optional[Path]:
@@ -24,11 +24,12 @@ class BridgeMixin:
 
         info_path.parent.mkdir(parents=True, exist_ok=True)
         info = {
+            'protocol': 2,
             "host": "127.0.0.1",
             "port": self.bridge_port,
             "token": self.bridge_token,
             "pid": os.getpid(),
-            "workspace": str(self.workspace_path) if self.workspace_path else None,
+            "workspace": str(self.workspace_path.resolve()) if self.workspace_path else None,
         }
         info_path.write_text(json.dumps(info), encoding="utf-8")
         self.bridge_info_path = info_path
@@ -91,6 +92,7 @@ class BridgeMixin:
                                 "success": False,
                             }
                         else:
+                            validate_workspace_request(req, neurotrace_server.workspace_path)
                             result = execute_backend_command(
                                 neurotrace_server,
                                 req.get("command", ""),

@@ -48,3 +48,23 @@ SYNC_TOOL_DEFINITIONS += [
   'annotations': {'readOnlyHint': False, 'destructiveHint': True, 'idempotentHint': False}},
 ]
 SYNC_TOOL_COMMANDS.update(neurotrace_host='host', neurotrace_connect='connect', neurotrace_team='team')
+
+for definition in SYNC_TOOL_DEFINITIONS:
+    properties = definition['inputSchema']['properties']
+    if definition['name'] in ('neurotrace_host', 'neurotrace_connect'):
+        properties['confirm_legacy_repository'] = {'type': 'boolean', 'default': False,
+            'description': 'Only after explicit confirmation that legacy local memories belong to the observed Git repository.'}
+    if definition['name'] == 'neurotrace_connect':
+        properties['preview_only'] = {'type': 'boolean', 'default': False,
+            'description': 'Validate invitation and local repository without consuming the invitation or exchanging memories.'}
+    if definition['name'] == 'neurotrace_team':
+        properties['repository_url'] = {'type': 'string', 'description': 'Target origin URL required when creating another shared project.'}
+        properties['workspace_scope'] = {'type': 'string', 'description': 'Optional directory within the target repository.'}
+
+SYNC_TOOL_DEFINITIONS.append({
+    'name': 'neurotrace_repository',
+    'description': 'Inspect the observed Git repository and database provenance. protect_project is only for an explicit owner request to bind a legacy project to this repository; it never changes a different existing binding. Branches of the same origin are compatible.',
+    'inputSchema': {'type': 'object', 'additionalProperties': False, 'properties': {
+        'action': {'type': 'string', 'enum': ['status', 'protect_project'], 'default': 'status'}}},
+    'annotations': {'readOnlyHint': False, 'destructiveHint': False, 'idempotentHint': True}})
+SYNC_TOOL_COMMANDS['neurotrace_repository'] = 'sync_repository'

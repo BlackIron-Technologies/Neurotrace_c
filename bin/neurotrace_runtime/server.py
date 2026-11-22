@@ -52,6 +52,8 @@ class NeuroTraceServer(SyncMixin, BridgeMixin, StorageMixin, EmbeddingMixin, Mem
         """Set the workspace path and check for existing database."""
         if not workspace:
             return "Error: Workspace path cannot be empty."
+        from neurotrace_sync.platform_storage import require_native_storage
+        require_native_storage(workspace)
         new_workspace_path = Path(workspace)
         if self.sync_worker:
             self.sync_worker.stop()

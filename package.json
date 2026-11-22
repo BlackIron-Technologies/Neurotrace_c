@@ -2,7 +2,7 @@
   "name": "neurotrace",
   "displayName": "NeuroTrace",
   "description": "Operational memory for AI agents and developers. Persistent decisions, insights, and tasks linked to your code across chats and sessions. Local-first, encrypted, offline.",
-  "version": "1.3.2",
+  "version": "1.3.3",
   "publisher": "BlackIronTechnologies",
   "license": "MIT",
   "contributors": [
@@ -647,6 +647,11 @@
             "publish_existing": {
               "type": "boolean",
               "default": false
+            },
+            "confirm_legacy_repository": {
+              "type": "boolean",
+              "default": false,
+              "description": "Only after explicit confirmation that legacy local memories belong to the observed Git repository."
             }
           }
         }
@@ -683,6 +688,16 @@
             "publish_existing": {
               "type": "boolean",
               "default": false
+            },
+            "confirm_legacy_repository": {
+              "type": "boolean",
+              "default": false,
+              "description": "Only after explicit confirmation that legacy local memories belong to the observed Git repository."
+            },
+            "preview_only": {
+              "type": "boolean",
+              "default": false,
+              "description": "Validate invitation and local repository without consuming the invitation or exchanging memories."
             }
           }
         }
@@ -731,6 +746,36 @@
             },
             "member_id": {
               "type": "string"
+            },
+            "repository_url": {
+              "type": "string",
+              "description": "Target origin URL required when creating another shared project."
+            },
+            "workspace_scope": {
+              "type": "string",
+              "description": "Optional directory within the target repository."
+            }
+          }
+        }
+      },
+      {
+        "name": "neurotrace_repository",
+        "toolReferenceName": "neurotrace_repository",
+        "displayName": "NeuroTrace: repository",
+        "modelDescription": "Inspect the observed Git repository and database provenance. protect_project is only for an explicit owner request to bind a legacy project to this repository; it never changes a different existing binding. Branches of the same origin are compatible.",
+        "userDescription": "Inspect the observed Git repository and database provenance. protect_project is only for an explicit owner request to bind a legacy project to this repository; it never changes a different existing binding. Branches of the same origin are compatible.",
+        "canBeReferencedInPrompt": true,
+        "inputSchema": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "type": "string",
+              "enum": [
+                "status",
+                "protect_project"
+              ],
+              "default": "status"
             }
           }
         }

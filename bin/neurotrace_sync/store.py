@@ -34,6 +34,8 @@ def require(condition, message, status=400):
 
 class Store:
     def __init__(self, path):
+        from .platform_storage import require_native_storage
+        require_native_storage(path)
         self.lock = DatabaseLock(path)
         self.conn = sqlite3.connect(path, isolation_level=None)
         self.conn.row_factory = sqlite3.Row
@@ -64,6 +66,8 @@ class Store:
         """)
         if 'device' not in {row[1] for row in self.conn.execute('PRAGMA table_info(tokens)')}:
             self.conn.execute("ALTER TABLE tokens ADD COLUMN device TEXT")
+        if 'repository' not in {row[1] for row in self.conn.execute('PRAGMA table_info(projects)')}:
+            self.conn.execute('ALTER TABLE projects ADD COLUMN repository TEXT')
         for row in self.all("SELECT hash FROM tokens WHERE device IS NULL"):
             self.conn.execute("UPDATE tokens SET device=? WHERE hash=?", (identifier(), row['hash']))
         self.conn.execute("INSERT OR IGNORE INTO server_metadata VALUES('instance_id',?)", (identifier(),))

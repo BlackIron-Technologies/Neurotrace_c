@@ -16,7 +16,7 @@
     const configured = Boolean(status.project_id);
     get('setup').hidden = configured; get('connected').hidden = !configured;
     get('reload-activity').disabled = busy || !configured;
-    const states = {unconfigured: 'Local only', live: 'Live sync', connecting: 'Connecting…', offline: 'Working offline', paused: 'Sync paused', locked: 'Unlock to sync', access_denied: 'Access changed', unavailable: 'Backend unavailable', error: 'Sync needs attention', incompatible_server: 'Update the server'};
+    const states = {unconfigured: 'Local only', live: 'Live sync', connecting: 'Connecting…', offline: 'Working offline', paused: 'Sync paused', locked: 'Unlock to sync', access_denied: 'Access changed', unavailable: 'Backend unavailable', error: 'Sync needs attention', repository_mismatch: 'Repository verification required', incompatible_server: 'Update the server'};
     get('state-label').textContent = states[status.state] || status.state;
     get('state-dot').className = 'dot ' + (status.state === 'live' ? 'live' : status.state === 'offline' ? 'offline' : '');
     const pending = status.counts?.pending || 0, recovered = status.counts?.recovered || 0;
@@ -26,7 +26,7 @@
       get('identity-label').textContent = status.actor_name + ' · ' + (labels[status.role] || status.role);
       get('role-description').textContent = status.error || (status.role === 'viewer' ? 'You can read shared memories. Ask the owner for editing access.' : 'Changes sync automatically, including after working offline.');
       get('pause').textContent = status.enabled ? 'Pause sync' : 'Resume sync';
-      if (loadedProject !== status.project_id || previousRole !== status.role) { loadedProject = status.project_id; send('team'); }
+      if (status.repository && status.state !== 'repository_mismatch' && (loadedProject !== status.project_id || previousRole !== status.role)) { loadedProject = status.project_id; send('team'); }
     }
   }
   document.querySelectorAll('[data-tab]').forEach(button => { button.onclick = () => tab(button.dataset.tab); });
@@ -35,6 +35,7 @@
   get('close-deployment').onclick = () => get('deployment-guide').close();
   get('recover-owner').onclick = () => send('recover');
   get('open-tunnel-setup').onclick = () => send('open-tunnel-setup');
+  get('protect-repository').onclick = () => send('protect-repository');
   get('host-stop').onclick = () => send('host-stop');
   get('pause').onclick = () => send('pause', {paused: status.enabled});
   get('check-sync').onclick = () => send('check-sync');
@@ -47,7 +48,7 @@
   get('member-kind').onchange = () => { if (get('member-kind').value === 'agent' && get('member-role').value === 'admin') { get('member-role').value = 'editor'; } renderTeam(team, network, busy); };
   get('transfer').onclick = () => send('transfer', {member: get('transfer-member').value});
   get('network-transfer').onclick = () => send('network-transfer', {member: get('transfer-member').value});
-  get('create-project').onclick = () => { const name = get('new-project-name').value.trim(); if (!name) { notice('Name the project you want to use in another workspace.', true); get('new-project-name').focus(); return; } send('create-project', {name}); };
+  get('create-project').onclick = () => { const name = get('new-project-name').value.trim(); if (!name) { notice('Name the project you want to use in another workspace.', true); get('new-project-name').focus(); return; } const repositoryUrl = get('new-project-origin').value.trim(); if (!repositoryUrl) { notice('Enter the origin URL of the target repository.', true); get('new-project-origin').focus(); return; } send('create-project', {name, repositoryUrl, workspaceScope: get('new-project-scope').value.trim()}); };
   get('export-drafts').onclick = () => send('export-drafts');
   get('show-code-icons').onchange = () => send('save-editor', {enabled: get('show-code-icons').checked});
   window.addEventListener('message', event => {
@@ -83,6 +84,7 @@
       if (!message.activity.events.length) { container.textContent = 'No project activity yet.'; }
     }
     if (message.type === 'hosting') { wizard.hostInfo(message.hosting); }
+    if (message.type === 'invitation-preview') { wizard.invitationChecked(message.result, message.requestId); }
     if (message.type === 'server-checked') { wizard.serverChecked(message.result); }
   });
   send('ready');

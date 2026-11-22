@@ -1,5 +1,6 @@
 export const setupHtml = `
 <div id="setup">
+  <p class="callout" id="repository-observed">Checking the Git repository for this workspace…</p>
   <div class="section-heading"><div><h2>Set up shared memory</h2><p>Follow the steps for this workspace. Nothing is shared until you confirm.</p></div></div>
   <ol id="setup-progress" class="progress" aria-label="Setup progress"></ol>
   <div class="card wizard" aria-busy="false" id="wizard">
@@ -43,6 +44,7 @@ export const setupHtml = `
     <div data-step="memories" hidden>
       <p id="local-memory-description">Checking this workspace's local memories…</p>
       <div id="import-choice" hidden><label class="checkbox"><input type="checkbox" id="publish"><span id="publish-label">Share this workspace's existing memories with the project</span></label><p class="hint">A local snapshot is saved before import. Identical records are reused; different versions of the same memory are both preserved. Missing memories never imply deletion.</p><p class="hint">To keep these memories local, cancel setup. Use an empty workspace if you only want to download the shared project.</p></div>
+      <div id="legacy-provenance" class="callout" hidden><strong>These older memories have no repository identity.</strong><p>Git can verify this checkout, but cannot prove where an old database came from. Only import these memories if they belong to the repository shown above.</p><label class="checkbox"><input type="checkbox" id="confirm-legacy"><span>I confirm these existing memories belong to this repository</span></label></div>
       <button id="refresh-workspace" class="text-button">Check local memories again</button>
     </div>
     <div data-step="review" hidden><dl class="review-list" id="setup-review"></dl><p class="callout" id="review-effect"></p><p class="hint">Your device credential is stored securely by your operating system. After connection, edits sync automatically. Server administrators can read shared content.</p></div>

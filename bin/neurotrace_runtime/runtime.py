@@ -140,6 +140,8 @@ def main_daemon():
                             "success": False,
                         }
                     else:
+                        from .commands import validate_workspace_request
+                        validate_workspace_request(req, server.workspace_path)
                         result = execute_backend_command(
                             server,
                             req.get("command", ""),

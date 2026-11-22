@@ -12,7 +12,7 @@ from neurotrace_sync.server_info import inspect_server
 class TunnelSetupTests(unittest.TestCase):
     @patch('neurotrace_sync.server_info.Remote')
     def test_server_check_reports_existing_network_without_claiming_it(self, remote):
-        remote.return_value.request.return_value = {'instance_id': 'ours', 'protocol': 1, 'initialized': True}
+        remote.return_value.request.return_value = {'instance_id': 'ours', 'protocol': 1, 'initialized': True, 'capabilities': ['repository_binding']}
         self.assertEqual(inspect_server('https://memory.example.com'), {'server_url': 'https://memory.example.com', 'initialized': True})
         remote.return_value.request.assert_called_once_with('/v1/status', timeout=5)
 

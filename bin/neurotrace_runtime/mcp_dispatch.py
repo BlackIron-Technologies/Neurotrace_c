@@ -24,6 +24,8 @@ def _handle_mcp_tool_call(server, tool_name, arguments):
     """
     if tool_name in SYNC_TOOL_COMMANDS:
         return _mcp_text_content(json.dumps(execute_backend_command(server, SYNC_TOOL_COMMANDS[tool_name], arguments)))
+    if tool_name != 'neurotrace_getDatabaseStatus':
+        server.guard_repository()
     if server.conn is None:
         status = server.check_db_status().get("status", "UNKNOWN")
         if status == "NO_DB":

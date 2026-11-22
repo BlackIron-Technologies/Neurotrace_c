@@ -11,6 +11,8 @@ from .domain import Domain
 from .identity import Identity
 from .store import Store, SyncError, require
 from .receipts import Receipts
+from .repository_policy import RepositoryPolicy
+from .repository import validate_repository, RepositoryMismatch
 
 
 def create_app(database, setup_key):
@@ -18,6 +20,7 @@ def create_app(database, setup_key):
     identity = Identity(store, setup_key)
     domain = Domain(store, identity)
     receipts = Receipts(store, identity)
+    repositories = RepositoryPolicy(store, identity)
     connections = set()
     attempts = defaultdict(deque)
 
@@ -25,7 +28,7 @@ def create_app(database, setup_key):
     async def errors(request, handler):
         try:
             require(not request.headers.get("Origin"), "Browser origins are not accepted by this API", 403)
-            if request.path in ("/v1/bootstrap", "/v1/join"):
+            if request.path in ("/v1/bootstrap", "/v1/join", "/v1/invitations/inspect"):
                 now = time.monotonic()
                 bucket = attempts[request.remote]
                 while bucket and now - bucket[0] > 60:
@@ -38,6 +41,8 @@ def create_app(database, setup_key):
             return response
         except SyncError as exc:
             return web.json_response({"error": str(exc)}, status=exc.status)
+        except RepositoryMismatch as exc:
+            return web.json_response({'error': str(exc)}, status=409)
         except (ValueError, TypeError, KeyError, OverflowError) as exc:
             return web.json_response({"error": "Invalid request: " + str(exc)[:150]}, status=400)
         except web.HTTPException:
@@ -52,19 +57,20 @@ def create_app(database, setup_key):
         return identity.authenticate(header[7:])
 
     async def notify(project, message_type="changed", exclude_device=None):
-        for ws, token, subscription in tuple(connections):
+        for ws, token, subscription, fingerprint in tuple(connections):
             if subscription != project:
                 continue
             try:
                 actor = identity.authenticate(token)
                 identity.role(actor, project)
+                repositories.check(project, fingerprint)
                 if actor['device_id'] != exclude_device:
                     await asyncio.wait_for(ws.send_json({"type": message_type}), 3)
             except (SyncError, ConnectionError, asyncio.TimeoutError):
                 await ws.close(code=4003, message=b"Access changed; reconnect")
 
     async def status(request):
-        return web.json_response({"protocol": 1, "capabilities": ["device_receipts"],
+        return web.json_response({"protocol": 1, "capabilities": ["device_receipts", "repository_binding"],
                                   "instance_id": store.one("SELECT value FROM server_metadata WHERE key='instance_id'")['value'],
                                   "initialized": bool(store.one("SELECT * FROM network"))})
 
@@ -73,12 +79,18 @@ def create_app(database, setup_key):
         return web.json_response(identity.bootstrap(data.get("key", ""), data.get("network_name", ""), data.get("name", "")))
 
     async def join(request):
-        return web.json_response(identity.redeem((await request.json()).get("code", "")))
+        data = await request.json()
+        return web.json_response(identity.redeem(data.get('code', ''), data.get('repository')))
+
+    async def inspect_invitation(request):
+        data = await request.json()
+        return web.json_response(repositories.preview(data.get('code', ''), data.get('repository')))
 
     async def network(request):
         actor = auth(request)
         if request.method == "POST":
-            return web.json_response(identity.create_project(actor, (await request.json()).get("name", "")))
+            data = await request.json()
+            return web.json_response(identity.create_project(actor, data.get('name', ''), validate_repository(data.get('repository'))))
         return web.json_response(identity.network(actor))
 
     async def transfer_network(request):
@@ -86,6 +98,12 @@ def create_app(database, setup_key):
 
     async def project_api(request):
         actor, project, action = auth(request), request.match_info["project"], request.match_info["action"]
+        if request.method == 'POST' and action == 'repository':
+            result = repositories.pin(actor, project, (await request.json()).get('repository'))
+            await notify(project)
+            return web.json_response(result)
+        identity.role(actor, project)
+        repositories.check(project, request.headers.get('X-NeuroTrace-Repository'))
         if request.method == "GET":
             if action == "snapshot":
                 result = domain.snapshot(actor, project)
@@ -124,16 +142,19 @@ def create_app(database, setup_key):
         actor = auth(request)
         project = request.match_info["project"]
         identity.role(actor, project)
-        require(sum(1 for _, token, _ in connections if token == request.headers["Authorization"][7:]) < 10,
+        fingerprint = request.headers.get('X-NeuroTrace-Repository')
+        repositories.check(project, fingerprint)
+        require(sum(1 for _, token, _, _ in connections if token == request.headers["Authorization"][7:]) < 10,
                 "Too many connections for this device", 429)
         ws = web.WebSocketResponse(heartbeat=15, max_msg_size=8192)
         await ws.prepare(request)
-        connection = (ws, request.headers["Authorization"][7:], project)
+        connection = (ws, request.headers["Authorization"][7:], project, fingerprint)
         connections.add(connection)
         await ws.send_json({"type": "changed"})
         try:
             while not ws.closed:
                 identity.role(identity.authenticate(connection[1]), project)
+                repositories.check(project, fingerprint)
                 try:
                     message = await ws.receive(timeout=10)
                     if message.type in (WSMsgType.CLOSE, WSMsgType.CLOSED, WSMsgType.ERROR):
@@ -149,7 +170,7 @@ def create_app(database, setup_key):
         return ws
 
     async def cleanup(app):
-        for ws, _, _ in tuple(connections):
+        for ws, _, _, _ in tuple(connections):
             await ws.close(code=1001, message=b"Server shutdown")
         store.close()
 
@@ -157,6 +178,7 @@ def create_app(database, setup_key):
     app.router.add_get("/v1/status", status)
     app.router.add_post("/v1/bootstrap", bootstrap)
     app.router.add_post("/v1/join", join)
+    app.router.add_post('/v1/invitations/inspect', inspect_invitation)
     app.router.add_get("/v1/network", network)
     app.router.add_post("/v1/projects", network)
     app.router.add_post("/v1/network/transfer", transfer_network)

@@ -9,7 +9,7 @@ from urllib.error import HTTPError
 
 import keyring
 
-USER_AGENT = "NeuroTrace/1.3.2"
+USER_AGENT = "NeuroTrace/1.3.3"
 
 
 def normalize_url(value):
@@ -37,13 +37,16 @@ class RemoteError(Exception):
 
 
 class Remote:
-    def __init__(self, url, token=""):
+    def __init__(self, url, token="", repository=None):
         self.url, self.token = normalize_url(url), token
+        self.repository = repository
 
     def request(self, path, data=None, timeout=15):
         headers = {"Content-Type": "application/json", "Accept": "application/json", "User-Agent": USER_AGENT}
         if self.token:
             headers["Authorization"] = "Bearer " + self.token
+        if self.repository:
+            headers['X-NeuroTrace-Repository'] = self.repository['id']
         request = Request(self.url + path, data=json.dumps(data).encode() if data is not None else None, headers=headers)
         try:
             with build_opener(NoRedirect()).open(request, timeout=timeout) as response:

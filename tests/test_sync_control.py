@@ -15,7 +15,9 @@ from aiohttp.test_utils import TestServer
 from neurotrace_runtime.commands import execute_backend_command
 from neurotrace_runtime.server import NeuroTraceServer
 from neurotrace_sync.http_server import create_app
-from neurotrace_sync.profile import Profile
+from neurotrace_sync.profile import Profile, RemoteError
+from neurotrace_sync.repository import pin_database
+from sync_fixtures import REPOSITORY, git_workspace
 
 
 class AgentSyncTests(unittest.IsolatedAsyncioTestCase):
@@ -32,7 +34,7 @@ class AgentSyncTests(unittest.IsolatedAsyncioTestCase):
         self.url = str(self.central.make_url('')).rstrip('/')
         self.session = ClientSession()
         self.owner = await self.request('POST', '/v1/bootstrap', {'key': 'test-key', 'name': 'Owner', 'network_name': 'Test'})
-        self.project = (await self.request('POST', '/v1/projects', {'name': 'Test'}, self.owner))['id']
+        self.project = (await self.request('POST', '/v1/projects', {'name': 'Test', 'repository': REPOSITORY}, self.owner))['id']
         self.clients = []
 
     async def asyncTearDown(self):
@@ -49,7 +51,11 @@ class AgentSyncTests(unittest.IsolatedAsyncioTestCase):
         self.temp.cleanup()
 
     async def request(self, method, path, data=None, actor=None):
-        headers = {'Authorization': 'Bearer ' + actor['token']} if actor else {}
+        headers = {'X-NeuroTrace-Repository': REPOSITORY['id']}
+        if actor:
+            headers['Authorization'] = 'Bearer ' + actor['token']
+        if path == '/v1/join' and data is not None:
+            data = {**data, 'repository': REPOSITORY}
         async with self.session.request(method, self.url + path, json=data, headers=headers) as response:
             result = await response.json()
             self.assertEqual(response.status, 200, result)
@@ -58,14 +64,17 @@ class AgentSyncTests(unittest.IsolatedAsyncioTestCase):
     async def client(self, name, credentials=None):
         credentials = credentials or self.owner
         path = self.root / name
-        path.mkdir()
+        git_workspace(path)
         server = NeuroTraceServer(None)
         server.set_workspace(str(path))
         server._ensure_database_ready()
         self.clients.append(server)
         self.tokens[credentials['actor_id']] = credentials['token']
+        with server.conn:
+            pin_database(server.conn, REPOSITORY)
         Profile(path).write({'server_url': self.url, 'project_id': self.project, 'actor_id': credentials['actor_id'],
-                             'enabled': True, 'role': 'editor', 'actor_name': name})
+                             'enabled': True, 'role': 'editor', 'actor_name': name, 'repository': REPOSITORY,
+                             'server_instance_id': (await self.request('GET', '/v1/status'))['instance_id']})
         with server.command_lock:
             server.sync_start()
         return server
@@ -112,7 +121,7 @@ class AgentSyncTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_status_read_is_local_only_and_reports_unconfigured(self):
         path = self.root / 'local'
-        path.mkdir()
+        git_workspace(path)
         server = NeuroTraceServer(None)
         server.set_workspace(str(path))
         server._ensure_database_ready()
@@ -129,6 +138,63 @@ class AgentSyncTests(unittest.IsolatedAsyncioTestCase):
             with self.assertRaises(ValueError):
                 await self.command(owner, 'sync', payload)
 
+
+    async def test_wrong_repository_mcp_join_does_not_consume_invite(self):
+        invitation = await self.request('POST', '/v1/projects/' + self.project + '/invite',
+                                        {'kind': 'human', 'role': 'editor', 'name': 'Peer'}, self.owner)
+        path = git_workspace(self.root / 'wrong', 'https://github.com/other/project')
+        server = NeuroTraceServer(None); server.set_workspace(str(path)); server._ensure_database_ready(); self.clients.append(server)
+        with patch.object(Profile, 'prepare_credentials', return_value=None):
+            with self.assertRaises(RemoteError):
+                await self.command(server, 'connect', {'invitation_url': self.url + '/#join=' + invitation['code']})
+        member = await self.request('POST', '/v1/join', {'code': invitation['code']})
+        self.assertEqual(member['project_id'], self.project)
+        self.assertEqual(server.conn.execute('SELECT COUNT(*) FROM thoughts').fetchone()[0], 0)
+        self.assertIsNone(Profile(path).read())
+
+    async def test_git_origin_change_blocks_pending_writes_and_restoration_resumes(self):
+        import subprocess
+        owner = await self.client('owner')
+        await self.command(owner, 'sync_pause', {'paused': True})
+        memory = await self.command(owner, 'add_thought', {'text': 'Queued before origin changed'})
+        subprocess.run(['git', '-C', str(owner.workspace_path), 'remote', 'set-url', 'origin', 'https://github.com/other/project'], check=True)
+        await self.command(owner, 'sync_pause', {'paused': False})
+        self.assertEqual((await self.command(owner, 'sync_status'))['state'], 'repository_mismatch')
+        for command, payload in [('add_thought', {'text': 'Forbidden'}), ('list', {}), ('get_thought', {'thought_id': memory['id']})]:
+            with self.assertRaises(ValueError):
+                await self.command(owner, command, payload)
+        snapshot = await self.request('GET', '/v1/projects/' + self.project + '/snapshot', actor=self.owner)
+        self.assertEqual(snapshot['records'], [])
+        self.assertEqual(owner.conn.execute("SELECT COUNT(*) FROM sync_outbox WHERE state='pending'").fetchone()[0], 1)
+        subprocess.run(['git', '-C', str(owner.workspace_path), 'remote', 'set-url', 'origin', REPOSITORY['origin']], check=True)
+        await self.command(owner, 'sync_pause', {'paused': False})
+        result = await self.command(owner, 'sync', {'action': 'wait', 'timeout_ms': 5000})
+        self.assertTrue(result['success'], result)
+
+    async def test_copied_database_provenance_rejects_other_repository_before_network(self):
+        path = git_workspace(self.root / 'copied', 'https://github.com/other/project')
+        server = NeuroTraceServer(None); server.set_workspace(str(path)); server._ensure_database_ready(); self.clients.append(server)
+        with server.conn:
+            pin_database(server.conn, REPOSITORY)
+        with self.assertRaises(ValueError):
+            await self.command(server, 'preview_connection', {'server_url': self.url, 'code': 'not-even-used'})
+        for command, payload in [('list', {}), ('add_thought', {'text': 'Wrong database'})]:
+            with self.assertRaises(ValueError):
+                await self.command(server, command, payload)
+        self.assertIsNone(Profile(path).read())
+
+    async def test_explicit_owner_adopts_legacy_project_without_reimport(self):
+        owner = await self.client('owner')
+        await self.command(owner, 'sync_pause', {'paused': True})
+        profile = Profile(owner.workspace_path).read(); profile.pop('repository'); profile['enabled'] = True; Profile(owner.workspace_path).write(profile)
+        import sqlite3
+        connection = sqlite3.connect(self.root / 'central.db'); connection.execute('UPDATE projects SET repository=NULL WHERE id=?', (self.project,)); connection.commit(); connection.close()
+        self.assertEqual((await self.command(owner, 'sync_status'))['state'], 'repository_mismatch')
+        result = await self.command(owner, 'sync_repository', {'action': 'protect_project'})
+        self.assertTrue(result['success'])
+        self.assertEqual(Profile(owner.workspace_path).read()['repository'], REPOSITORY)
+        result = await self.command(owner, 'sync', {'action': 'wait', 'timeout_ms': 5000})
+        self.assertTrue(result['success'], result)
 
 class McpContracts(unittest.TestCase):
     def test_tools_are_registered_in_stdio_and_vscode_with_matching_contracts(self):

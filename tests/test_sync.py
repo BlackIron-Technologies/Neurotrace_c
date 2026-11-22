@@ -12,6 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "bin"))
 
 from aiohttp import ClientSession, WSMsgType, web
 from aiohttp.test_utils import TestServer
+from sync_fixtures import REPOSITORY
 from neurotrace_sync.domain import Domain
 from neurotrace_sync.http_server import create_app
 from neurotrace_sync.identity import Identity
@@ -42,7 +43,7 @@ class SyncAcceptance(unittest.IsolatedAsyncioTestCase):
         self.session = ClientSession()
         self.replicas = []
         self.owner = await self.call("POST", "/v1/bootstrap", data={"key": "test-setup-key", "network_name": "Test network", "name": "Owner"})
-        project = await self.call("POST", "/v1/projects", self.owner, {"name": "Test project"})
+        project = await self.call("POST", "/v1/projects", self.owner, {"name": "Test project", "repository": REPOSITORY})
         self.project = project["id"]
 
     async def asyncTearDown(self):
@@ -53,7 +54,11 @@ class SyncAcceptance(unittest.IsolatedAsyncioTestCase):
         self.temp.cleanup()
 
     async def call(self, method, path, identity=None, data=None, expected=200):
-        headers = {"Authorization": "Bearer " + identity["token"]} if identity else {}
+        headers = {"X-NeuroTrace-Repository": REPOSITORY["id"]}
+        if identity:
+            headers["Authorization"] = "Bearer " + identity["token"]
+        if path == "/v1/join" and data is not None:
+            data = {**data, "repository": REPOSITORY}
         async with self.session.request(method, self.url + path, json=data, headers=headers) as response:
             body = await response.json()
             self.assertEqual(response.status, expected, body)
@@ -156,7 +161,7 @@ class SyncAcceptance(unittest.IsolatedAsyncioTestCase):
         agent = await self.member(kind="agent", name="Bot")
         await self.call("POST", self.route("invite"), agent, {"role": "editor", "kind": "human", "name": "Invalid"}, expected=403)
         await self.call("POST", self.route("member"), self.owner, {"member": self.owner["actor_id"], "role": None}, expected=409)
-        async with self.session.ws_connect(self.url + self.route("ws"), headers={"Authorization": "Bearer " + viewer["token"]}) as ws:
+        async with self.session.ws_connect(self.url + self.route("ws"), headers={"Authorization": "Bearer " + viewer["token"], "X-NeuroTrace-Repository": REPOSITORY["id"]}) as ws:
             self.assertEqual((await ws.receive_json())["type"], "changed")
             await self.call("POST", self.route("member"), self.owner, {"member": viewer["actor_id"], "role": None})
             message = await ws.receive(timeout=4)
@@ -170,10 +175,10 @@ class SyncAcceptance(unittest.IsolatedAsyncioTestCase):
 
     async def test_websocket_wakeup_and_cross_project_isolation(self):
         editor = await self.member()
-        other = await self.call("POST", "/v1/projects", self.owner, {"name": "Private"})
+        other = await self.call("POST", "/v1/projects", self.owner, {"name": "Private", 'repository': REPOSITORY})
         await self.call("GET", "/v1/projects/" + other["id"] + "/snapshot", editor, expected=403)
         replica = await self.replica()
-        async with self.session.ws_connect(self.url + self.route("ws"), headers={"Authorization": "Bearer " + editor["token"]}) as ws:
+        async with self.session.ws_connect(self.url + self.route("ws"), headers={"Authorization": "Bearer " + editor["token"], "X-NeuroTrace-Repository": REPOSITORY["id"]}) as ws:
             await ws.receive_json()
             row = replica.create("Broadcast", type="note")
             operation = json.loads(replica.pending()[0]["operation"])
@@ -254,6 +259,24 @@ class SyncAcceptance(unittest.IsolatedAsyncioTestCase):
 
     async def test_cursor_from_future_is_not_silently_accepted(self):
         await self.call("GET", self.route("changes?after=999999"), self.owner, expected=409)
+
+    async def test_second_process_cannot_rewind_database_with_stale_page(self):
+        first, record = await self.seed()
+        second = await self.replica()
+        after = second.cursor()
+        first.enqueue(record, 'edit', {'tags': 'older'})
+        await self.flush(first)
+        older = await self.call('GET', self.route('changes?after=' + str(after)), self.owner)
+        first.enqueue(record, 'edit', {'tags': 'newer'})
+        await self.flush(first)
+        newer = await self.call('GET', self.route('changes?after=' + str(after)), self.owner)
+        filename = second.conn.execute('PRAGMA database_list').fetchone()[2]
+        other_connection = local_replica(filename, self.project)
+        self.replicas.append(other_connection)
+        second.apply_page(newer)
+        other_connection.apply_page(older)
+        self.assertEqual(other_connection.cursor(), newer['cursor'])
+        self.assertEqual(other_connection.conn.execute('SELECT tags FROM thoughts WHERE id=?', (record,)).fetchone()[0], 'newer')
 
     async def test_device_receipts_are_monotonic_authenticated_and_revocable(self):
         replica, record = await self.seed()

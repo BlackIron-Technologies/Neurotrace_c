@@ -9,7 +9,7 @@ from .profile import Profile
 
 class SyncAdministration:
     def host(self, action='status', port=9473, public_url='', network_name='NeuroTrace team',
-             project_name='', owner_name='', invite_name='Teammate', invite_role='editor', publish_existing=False):
+             project_name='', owner_name='', invite_name='Teammate', invite_role='editor', publish_existing=False, confirm_legacy_repository=False):
         if action == 'status':
             return hosting.status()
         if action == 'stop':
@@ -40,7 +40,8 @@ class SyncAdministration:
         if not existing:
             connected = self.sync_connect(verified['public_url'], mode='create', setup_key=started['setup_key'],
                                            name=owner_name or getpass.getuser(), network_name=network_name,
-                                           project_name=project_name or self.workspace_path.name, publish=publish_existing)
+                                           project_name=project_name or self.workspace_path.name, publish=publish_existing,
+                                           confirm_legacy_repository=confirm_legacy_repository)
             imported = connected.get('import_report')
         invitation = self.sync_manage('invite', {'name': invite_name, 'kind': 'human', 'role': invite_role})
         return {'success': True, 'server_url': verified['public_url'], 'project': self.sync_status()['project_id'],
@@ -49,7 +50,7 @@ class SyncAdministration:
                 'hosting': 'Local process; administrator manages public tunnel and always-on service separately.'}
 
     def connect(self, invitation_url='', server_url='', setup_key_file='', name='', network_name='',
-                project_name='', publish_existing=False):
+                project_name='', publish_existing=False, confirm_legacy_repository=False, preview_only=False):
         if self.conn is None:
             error = self._ensure_database_ready()
             if error:
@@ -59,7 +60,10 @@ class SyncAdministration:
             code = parse_qs(invitation.fragment).get('join', [''])[0]
             if not code:
                 raise ValueError('Provide the complete invitation link')
-            return self.sync_connect(invitation.scheme + '://' + invitation.netloc, code=code, publish=publish_existing)
+            url = invitation.scheme + '://' + invitation.netloc
+            if preview_only:
+                return self.preview_connection(url, code)
+            return self.sync_connect(url, code=code, publish=publish_existing, confirm_legacy_repository=confirm_legacy_repository)
         if not setup_key_file:
             raise ValueError('Provide an invitation URL, or a server URL and private bootstrap key file for a new network')
         key = Path(setup_key_file)
@@ -67,9 +71,9 @@ class SyncAdministration:
             raise ValueError('Choose a small, private file containing only the server setup key')
         return self.sync_connect(server_url, mode='create', setup_key=key.read_text(encoding='utf-8').strip(),
                                  name=name or getpass.getuser(), network_name=network_name, project_name=project_name,
-                                 publish=publish_existing)
+                                 publish=publish_existing, confirm_legacy_repository=confirm_legacy_repository)
 
-    def team(self, action='members', name='', role='editor', kind='human', member_id=''):
+    def team(self, action='members', name='', role='editor', kind='human', member_id='', repository_url='', workspace_scope=''):
         if action == 'members':
             return self.sync_manage('members')
         if action == 'invite':
@@ -80,5 +84,5 @@ class SyncAdministration:
         if action == 'transfer':
             return self.sync_manage('transfer', {'member': member_id})
         if action == 'create_project':
-            return self.sync_manage('create_project', {'name': name})
+            return self.sync_manage('create_project', {'name': name, 'repository_url': repository_url, 'workspace_scope': workspace_scope})
         raise ValueError('Unsupported team action')

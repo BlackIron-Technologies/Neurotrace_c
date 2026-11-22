@@ -7,9 +7,11 @@ from .replica import Replica
 from .worker import SyncWorker
 from .control import SyncControl
 from .administration import SyncAdministration
+from .repository_client import RepositoryClientMixin, compatible_server, check_local_project
+from .repository import workspace_repository, database_repository, require_same_repository, pin_database
 
 
-class SyncMixin(SyncControl, SyncAdministration):
+class SyncMixin(SyncControl, SyncAdministration, RepositoryClientMixin):
     def _sync_basic_status(self):
         if not self.workspace_path:
             return {"state": "unconfigured"}
@@ -18,18 +20,32 @@ class SyncMixin(SyncControl, SyncAdministration):
         if not profile:
             return {"state": "unconfigured"}
         state = worker.state if worker else ("locked" if self.conn is None else "paused")
+        repository_error = ''
+        try:
+            self.guard_repository()
+        except ValueError as exc:
+            state, repository_error = 'repository_mismatch', str(exc)
         return {"state": state, "server_url": profile["server_url"], "project_id": profile["project_id"],
                 "project_name": profile.get("project_name", "Shared project"), "actor_name": profile.get("actor_name", ""),
                 "role": worker.role if worker else profile.get("role", "viewer"),
-                "error": worker.error if worker else "", "counts": {row[0]: row[1] for row in self.conn.execute('SELECT state,COUNT(*) FROM sync_outbox GROUP BY state')} if self.conn else {},
+                "repository": profile.get('repository'),
+                "error": repository_error or (worker.error if worker else ""), "counts": {row[0]: row[1] for row in self.conn.execute('SELECT state,COUNT(*) FROM sync_outbox GROUP BY state')} if self.conn else {},
                 "enabled": profile.get("enabled", True)}
 
     def sync_start(self):
-        if not self.workspace_path or self.conn is None or getattr(self, "sync_worker", None):
+        if not self.workspace_path or self.conn is None:
             return
+        worker = getattr(self, 'sync_worker', None)
+        if worker and worker.thread.is_alive():
+            return
+        self.sync_worker = None
         profile_store = Profile(self.workspace_path)
         profile = profile_store.read()
         if not profile or not profile.get("enabled", True):
+            return
+        try:
+            self.guard_repository()
+        except ValueError:
             return
         token = profile_store.token(profile)
         if not token:
@@ -38,22 +54,26 @@ class SyncMixin(SyncControl, SyncAdministration):
         self.sync_worker = SyncWorker(self, profile, token, replica)
         self.sync_worker.start()
 
-    def sync_connect(self, server_url, mode="join", code="", setup_key="", name="", network_name="", project_name="", project_id="", publish=False):
+    def sync_connect(self, server_url, mode="join", code="", setup_key="", name="", network_name="", project_name="", project_id="", publish=False, confirm_legacy_repository=False):
         if self.conn is None:
             raise ValueError("Initialize and unlock this workspace before connecting")
         if Profile(self.workspace_path).read():
             raise ValueError("This workspace is already connected. Pause or resume it from settings")
-        remote = Remote(server_url)
+        repository = workspace_repository(self.workspace_path)
+        previous = database_repository(self.conn)
+        if previous:
+            require_same_repository(previous, repository)
+        remote = Remote(server_url, repository=repository)
         if mode not in ("join", "create", "recover"):
             raise ValueError("Choose Join or Create")
         count = self.conn.execute("SELECT COUNT(*) FROM thoughts").fetchone()[0]
         if count and not publish:
             raise ValueError("Choose Publish to share existing memories, or join from an empty workspace")
+        if count and not previous and not confirm_legacy_repository:
+            raise ValueError('Legacy memories have no repository identity. Explicitly confirm that they belong to this repository before importing.')
         if mode == "create" and not all(isinstance(v, str) and 0 < len(v.strip()) <= 100 for v in (name, network_name, project_name)):
             raise ValueError("Enter your name, network name and shared project name")
-        status = remote.request("/v1/status")
-        if status.get("protocol") != 1:
-            raise ValueError("This server uses an unsupported synchronization protocol")
+        status = compatible_server(remote)
         profile_store = Profile(self.workspace_path)
         profile_store.prepare_credentials(remote.url)
         recovery_path = profile_store.path.with_suffix(".setup.json")
@@ -70,7 +90,9 @@ class SyncMixin(SyncControl, SyncAdministration):
         elif mode == "create":
             credentials = remote.request("/v1/bootstrap", {"key": setup_key, "name": name, "network_name": network_name})
         else:
-            credentials = remote.request("/v1/join", {"code": code})
+            preview = self.preview_connection(server_url, code)
+            check_local_project(self.conn, preview['project_id'])
+            credentials = remote.request("/v1/join", {"code": code, 'repository': repository})
             project_id = credentials["project_id"]
         remote.token = credentials["token"]
         # Store credentials before further setup so a failed project/import can be recovered without losing the owner.
@@ -79,17 +101,25 @@ class SyncMixin(SyncControl, SyncAdministration):
         recovery_path.parent.mkdir(parents=True, exist_ok=True)
         recovery_path.write_text(json.dumps(recovery), encoding="utf-8")
         if mode == "create" and not project_id:
-            project = remote.request("/v1/projects", {"name": project_name})
+            project = remote.request("/v1/projects", {"name": project_name, 'repository': repository})
             project_id = project["id"]
             recovery["project_id"] = project_id
             recovery_path.write_text(json.dumps(recovery), encoding="utf-8")
         network = remote.request("/v1/network")
         project = next(p for p in network["projects"] if p["id"] == project_id)
+        expected = project.get('repository')
+        if isinstance(expected, str):
+            expected = json.loads(expected)
+        require_same_repository(expected, repository)
+        check_local_project(self.conn, project_id)
         snapshot = remote.request("/v1/projects/" + project_id + "/snapshot")
         replica = Replica(self.conn, self.workspace_path, project_id)
         import_report = replica.initialize(snapshot, publish=publish)
+        with self.conn:
+            pin_database(self.conn, repository)
         profile = {"server_url": remote.url, "project_id": project_id, "actor_id": credentials["actor_id"],
-                   "actor_name": network["actor"]["name"], "project_name": project["name"], "role": snapshot["role"], "enabled": True}
+                   "actor_name": network["actor"]["name"], "project_name": project["name"], "role": snapshot["role"], "enabled": True,
+                   'repository': repository, 'server_instance_id': status['instance_id']}
         profile_store.write(profile)
         recovery_path.unlink(missing_ok=True)
         self.sync_start()
@@ -121,7 +151,9 @@ class SyncMixin(SyncControl, SyncAdministration):
         profile = profile_store.read()
         if not profile:
             raise ValueError("Connect a shared project first")
-        remote = Remote(profile["server_url"], profile_store.token(profile))
+        if action not in ('network',):
+            self.guard_repository()
+        remote = Remote(profile["server_url"], profile_store.token(profile), profile.get('repository'))
         allowed = {"members", "activity", "invite", "member", "transfer", "network", "network_transfer", "create_project"}
         if action not in allowed:
             raise ValueError("Unsupported team action")
@@ -130,7 +162,10 @@ class SyncMixin(SyncControl, SyncAdministration):
         if action == "network_transfer":
             return remote.request("/v1/network/transfer", data)
         if action == "create_project":
-            project = remote.request("/v1/projects", {"name": data["name"]})
+            from .repository import repository_identity
+            target = repository_identity(data.get('repository_url', ''), data.get('workspace_scope', ''))
+            project = remote.request("/v1/projects", {"name": data["name"], 'repository': target})
+            remote.repository = target
             invitation = remote.request("/v1/projects/" + project["id"] + "/invite", {"name": profile["actor_name"], "role": "viewer", "kind": "device"})
             return {"invitation": remote.url + "/#join=" + invitation["code"], "name": project["name"]}
         return remote.request("/v1/projects/" + profile["project_id"] + "/" + action, data)
@@ -157,6 +192,7 @@ class SyncMixin(SyncControl, SyncAdministration):
         return self.sync_edit_context(thought_id)
 
     def _shared_replica(self):
+        self.guard_repository()
         if not self.workspace_path or not Profile(self.workspace_path).read():
             return None
         if self.conn is None:

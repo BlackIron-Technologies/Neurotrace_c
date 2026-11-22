@@ -1,3 +1,5 @@
+import { toForwardSlashes, toWslPath, buildStdioMcpConfig, buildGrokToml, quoteBashArg, buildCodexWindowsToml, buildCodexWslToml, buildCodexWindowsViaWslToml, upsertTomlBlock, upsertTomlTable, upsertTomlScalarInTable } from './mcp/config/templates';
+import { buildAgentsReadme } from './mcp/config/guide';
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -36,8 +38,6 @@ const CURSOR_RULE_RELATIVE_PATH = path.join('.cursor', 'rules', 'neurotrace.mdc'
 const AGENTS_MD_FILENAME = 'AGENTS.md';
 const WORKSPACE_FOLDER_TOKEN = '${workspaceFolder}';
 const CLAUDE_PROJECT_DIR_TOKEN = '${CLAUDE_PROJECT_DIR:-.}';
-const CODEX_MCP_MARKER_START = '# BEGIN NEUROTRACE MCP';
-const CODEX_MCP_MARKER_END = '# END NEUROTRACE MCP';
 const NEUROTRACE_AGENTS_START = '<!-- neurotrace-start -->';
 const NEUROTRACE_AGENTS_END = '<!-- neurotrace-end -->';
 const NEUROTRACE_COPILOT_MEMORY_START = '<!-- neurotrace-copilot-memory:start -->';
@@ -108,101 +108,8 @@ function getCopilotGlobalMemoryPath(): string | null {
     }
 }
 
-function toForwardSlashes(input: string): string {
-    return input.replace(/\\/g, '/');
-}
-
-function toWslPath(input: string): string {
-    if (input.startsWith('/')) {
-        return input;
-    }
-
-    const match = input.match(/^([A-Za-z]):[\\/](.*)$/);
-    if (!match) {
-        return toForwardSlashes(input);
-    }
-
-    const drive = match[1].toLowerCase();
-    const rest = match[2].replace(/\\/g, '/');
-    return `/mnt/${drive}/${rest}`;
-}
-
 function getWorkspacePath(): string | null {
     return vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? null;
-}
-
-function buildStdioMcpConfig(exePath: string, workspaceArg: string, extraArgs: string[] = []) {
-    return {
-        mcpServers: {
-            neurotrace: {
-                command: exePath,
-                args: ['--mcp', '--workspace', workspaceArg, ...extraArgs],
-            },
-        },
-    };
-}
-
-function buildCodexToml(command: string, args: string[]): string {
-    return [
-        '[mcp_servers.neurotrace]',
-        `command = ${quoteTomlString(command)}`,
-        `args = [${args.map(quoteTomlString).join(', ')}]`,
-        'startup_timeout_sec = 45',
-        'tool_timeout_sec = 120',
-        'enabled = true',
-        '',
-    ].join('\n');
-}
-
-function quoteTomlString(value: string): string {
-    return `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
-}
-
-function buildGrokToml(command: string, workspaceArg: string): string {
-    return [
-        '[mcp_servers.neurotrace]',
-        `command = ${quoteTomlString(command)}`,
-        `args = [${['--mcp', '--workspace', workspaceArg].map(quoteTomlString).join(', ')}]`,
-        'startup_timeout_sec = 45',
-        'tool_timeout_sec = 120',
-        'enabled = true',
-        '',
-    ].join('\n');
-}
-
-function quoteBashArg(value: string): string {
-    return `'${value.replace(/'/g, `'\\''`)}'`;
-}
-
-function buildCodexWindowsToml(exePath: string, workspacePath: string): string {
-    const normalizedExe = toForwardSlashes(exePath);
-    const normalizedWorkspace = toForwardSlashes(workspacePath);
-
-    return buildCodexToml(normalizedExe, ['--mcp', '--workspace', normalizedWorkspace]);
-}
-
-function buildCodexWslToml(commandPath: string, workspacePath: string): string {
-    const wslCommand = toWslPath(commandPath);
-    const wslWorkspace = toWslPath(workspacePath);
-    const isPythonScript = wslCommand.endsWith('.py');
-
-    return buildCodexToml(
-        isPythonScript ? 'python3' : wslCommand,
-        isPythonScript
-            ? [wslCommand, '--mcp', '--workspace', wslWorkspace]
-            : ['--mcp', '--workspace', wslWorkspace]
-    );
-}
-
-function buildCodexWindowsViaWslToml(commandPath: string, workspacePath: string): string {
-    const wslCommand = toWslPath(commandPath);
-    const wslWorkspace = toWslPath(workspacePath);
-    const isPythonScript = wslCommand.endsWith('.py');
-    const launchCommand = isPythonScript
-        ? `python3 ${quoteBashArg(wslCommand)} --mcp --workspace ${quoteBashArg(wslWorkspace)}`
-        : `${quoteBashArg(wslCommand)} --mcp --workspace ${quoteBashArg(wslWorkspace)}`;
-
-    return buildCodexToml('wsl.exe', ['bash', '-lc', launchCommand]);
 }
 
 function isCodexInstalledInWsl(): boolean {
@@ -217,14 +124,12 @@ function isCodexInstalledInWsl(): boolean {
 }
 
 async function resolveCodexWslCommandPath(context: vscode.ExtensionContext): Promise<string> {
-    const pythonScriptPath = vscode.Uri.joinPath(context.extensionUri, 'bin', 'neurotrace.py').fsPath;
-    if (os.platform() !== 'win32' || !isCodexInstalledInWsl()) {
-        return pythonScriptPath;
+    if (os.platform() === 'win32') {
+        const executable = getBackendExecutablePath(context);
+        if (!executable?.toLowerCase().endsWith('.exe')) { throw new Error('Install the Windows NeuroTrace backend before configuring MCP'); }
+        return executable;
     }
-
-    const backendDownloader = new BackendDownloader(context);
-    const wslBackendPath = await backendDownloader.ensureCodexWslBackend();
-    return wslBackendPath ?? pythonScriptPath;
+    return vscode.Uri.joinPath(context.extensionUri, 'bin', 'neurotrace.py').fsPath;
 }
 
 export async function getCodexUnlockTerminalLaunch(
@@ -239,7 +144,7 @@ export async function getCodexUnlockTerminalLaunch(
     if (codexUsesWsl) {
         const commandPath = await resolveCodexWslCommandPath(context);
         const wslCommand = toWslPath(commandPath);
-        const wslWorkspace = toWslPath(workspacePath);
+        const wslWorkspace = commandPath.toLowerCase().endsWith('.exe') ? toForwardSlashes(workspacePath) : toWslPath(workspacePath);
         const launchCommand = wslCommand.endsWith('.py')
             ? `python3 ${quoteBashArg(wslCommand)} --unlock --workspace ${quoteBashArg(wslWorkspace)}`
             : `${quoteBashArg(wslCommand)} --unlock --workspace ${quoteBashArg(wslWorkspace)}`;
@@ -275,162 +180,6 @@ export async function getCodexUnlockTerminalLaunch(
         shellArgs: ['--unlock', '--workspace', workspacePath],
         cwd: workspacePath,
     };
-}
-
-function buildAgentsReadme(workspacePath: string, claudeConfigJson: string, exePath: string): string {
-    const normalizedWorkspace = toForwardSlashes(workspacePath);
-    const isCursor = isCursorHost();
-    const claudeTemplate = claudeConfigJson.trimEnd();
-    const claudeServerBlock = JSON.stringify({
-        command: exePath,
-        args: ['--mcp', '--workspace', CLAUDE_PROJECT_DIR_TOKEN],
-    });
-
-    return [
-        '# NeuroTrace MCP Agent Guide',
-        '',
-        'This folder contains ready-to-use MCP config templates generated by NeuroTrace.',
-        'NeuroTrace auto-configures supported hosts where possible, and this folder serves as the detailed guide plus manual fallback for external MCP clients.',
-        '',
-        '## Files',
-        '- `claude/`: Claude Code MCP JSON template.',
-        '- `codex/`: Codex templates and compatibility aliases.',
-        '- `cursor/`: Cursor MCP JSON template.',
-        '- `cline/`: Cline MCP JSON template.',
-        '- `windsurf/`: Windsurf MCP JSON template.',
-        '- `grok/`: Grok MCP TOML template.',
-        '- `claude/claude.mcp.json`: MCP JSON template for Claude Code global config using `${CLAUDE_PROJECT_DIR:-.}`.',
-        '- `codex/codex.windows.config.toml`: Codex template for Windows hosts. If Codex is sandboxed in WSL, this template launches NeuroTrace through `wsl.exe`.',
-        '- `codex/codex.unix.config.toml`: Codex template for macOS, Linux, and WSL.',
-        '- `codex/codex.wsl.config.toml`: Compatibility alias to the Unix Codex template.',
-        '- `codex/codex.config.toml`: Compatibility alias to the Windows Codex template.',
-        '- `cursor/cursor.mcp.json`: MCP JSON template for global Cursor MCP config using `${workspaceFolder}`.',
-        '- `cline/cline.mcp.json`: MCP JSON template for global Cline MCP config using `${workspaceFolder}`.',
-        '- `windsurf/windsurf.mcp.json`: MCP JSON template for Windsurf. Uses the current workspace path because Windsurf does not reliably expand `${workspaceFolder}` in MCP args.',
-        '- `grok/grok.config.toml`: MCP TOML template for Grok global or project config.',
-        ...(isCursor ? ['- `.cursor/rules/neurotrace.mdc`: Cursor rule that teaches the agent to use NeuroTrace tools before coding.'] : []),
-        ...(!isCursor ? ['- `.github/copilot-instructions.md`: VS Code Copilot instructions that teach the agent to use NeuroTrace naturally.'] : []),
-        '',
-        '## Workspace',
-        `- Current workspace: \`${normalizedWorkspace}\``,
-        '',
-        '## Quick Setup (Codex)',
-        '1. NeuroTrace auto-rebinds the global Codex MCP entry to the current workspace from the active IDE window when supported.',
-        '2. If Codex is not yet configured correctly, open `~/.codex/config.toml` and copy the matching template from the `codex/` subfolder:',
-        '   - Use `codex/codex.windows.config.toml` on Windows hosts. If Codex is WSL-sandboxed, this template wraps the WSL backend via `wsl.exe`.',
-        '   - Use `codex/codex.unix.config.toml` if Codex runs directly on macOS, Linux, or WSL.',
-        '3. Run `codex mcp list` to verify server discovery.',
-        '4. Validate with a real tool call such as `neurotrace_getDatabaseStatus`.',
-        '5. Codex currently supports only one active NeuroTrace workspace at a time through the global MCP entry.',
-        '6. If another IDE window takes control, return to this repo and reload that IDE window to rebind Codex back to this workspace.',
-        '7. If you prefer, you can ask your coding agent to configure Codex automatically by telling it to copy the appropriate NeuroTrace template from `.neurotrace/mcp/codex/` into the active Codex config.',
-        '',
-        '## Note',
-        'NeuroTrace is a tool-first MCP server.',
-        'It primarily exposes `tools` and may not expose static `resources/templates`.',
-        'If `resources/templates` appears empty in Codex, this is expected behavior.',
-        'Use `tools/list` and a real tool call to validate connectivity.',
-        '',
-        '## Quick Setup (Cursor/Cline/Windsurf)',
-        '1. Cursor support is auto-configured by NeuroTrace in supported environments, and the generated files here document the effective setup.',
-        '2. For Cline, Windsurf, or any manual MCP flow, open your client MCP config file.',
-        '3. Paste the corresponding JSON from that client\'s subfolder.',
-        '4. Restart the client and verify NeuroTrace tools are available.',
-        '',
-        '### Global MCP Config (Claude Code - Recommended)',
-        'For Claude, NeuroTrace recommends configuring the server at **global (user) scope**.',
-        'Claude Code shares the same `~/.claude.json` across all of its surfaces - the `claude` CLI, the IDE extension (VS Code / JetBrains), and the desktop app - so a single global entry makes NeuroTrace available everywhere without per-project setup.',
-        '',
-        '**Exact global template** (also saved as `claude/claude.mcp.json`):',
-        '',
-        '```json',
-        claudeTemplate,
-        '```',
-        '',
-        '- It uses `"--workspace", "${CLAUDE_PROJECT_DIR:-.}"`, and Claude Code sets `CLAUDE_PROJECT_DIR` for local stdio MCP servers, so this one global entry follows whatever project you open.',
-        '- In a repo without NeuroTrace initialized, the tools still load and `neurotrace_getDatabaseStatus` returns `no_database` cleanly.',
-        '',
-        '**Official config location (user scope) - per Claude Code docs:**',
-        '- Windows: `C:\\Users\\<you>\\.claude.json` (`%USERPROFILE%\\.claude.json`)',
-        '- macOS / Linux: `~/.claude.json`',
-        '- The `neurotrace` entry goes under the top-level `"mcpServers"` object, not under a specific `projects` entry.',
-        '',
-        '**Two ways to apply it:**',
-        '1. CLI (recommended) - run `claude mcp add-json` with the inner server block and `--scope user`:',
-        '   ```bash',
-        `   claude mcp add-json neurotrace '${claudeServerBlock}' --scope user`,
-        '   ```',
-        '2. Manual - open the `~/.claude.json` path above and merge the full `claude/claude.mcp.json` content into the top-level `"mcpServers"` object, then restart or reload Claude Code.',
-        '',
-        'Verify with `claude mcp list` (CLI) or by reloading and making a real tool call such as `neurotrace_getDatabaseStatus`.',
-        '',
-        '### Global MCP Config (Cursor - Recommended)',
-        '- Add the `cursor/cursor.mcp.json` content under the global `mcpServers` section in Cursor User Settings.',
-        '- Use `"--workspace", "${workspaceFolder}"` so NeuroTrace MCP tools are available in any project you open.',
-        '- In Cursor, NeuroTrace uses a localhost bridge to the backend started by the NeuroTrace extension in that same Cursor window for encrypted databases.',
-        '- If the database is encrypted, open the NeuroTrace sidebar in Cursor and unlock it there before using MCP tools.',
-        '',
-        '### Global MCP Config (Cline)',
-        '- `cline/cline.mcp.json` is generated the same way, using `"--workspace", "${workspaceFolder}"` for global reuse across projects.',
-        '',
-        '### Windsurf Note',
-        '- `windsurf/windsurf.mcp.json` stays workspace-specific because Windsurf does not reliably expand `${workspaceFolder}` in MCP arguments.',
-        '',
-        '### Global MCP Config (Grok)',
-        '- NeuroTrace auto-upserts `~/.grok/config.toml` with `[mcp_servers.neurotrace]` and enables `[memory] enabled = true` so Grok can discover the MCP tools and its own memory on new sessions.',
-        '- The generated `grok/grok.config.toml` can also be copied into a project `.grok/config.toml` if you want a repository-scoped override.',
-        '- NeuroTrace also updates `~/.grok/memory/MEMORY.md` with the same workflow block used by Codex and Claude.',
-        '',
-        '### Codex Standalone Behavior',
-        '- The generated Codex templates launch NeuroTrace directly for this workspace instead of depending on the IDE bridge.',
-        '- Codex keeps its own local NeuroTrace daemon session for the workspace on the host where Codex is running.',
-        '- If the database is encrypted, unlock it on that same host with `neurotrace --unlock --workspace <workspace>` in an external terminal outside the chat.',
-        '- For Codex, the global MCP binding is effectively single-workspace: the last reloaded NeuroTrace window takes control.',
-        '',
-        ...(isCursor
-            ? [
-                '### Cursor Project Rule',
-                '- NeuroTrace also generates `.cursor/rules/neurotrace.mdc` alongside these MCP files.',
-                '- This gives Cursor a project rule that reminds the agent to check NeuroTrace before coding and to record important decisions afterwards.',
-                '',
-            ]
-            : []),
-        ...(!isCursor
-            ? [
-                '### VS Code Copilot Instructions',
-                '- NeuroTrace also generates `.github/copilot-instructions.md` alongside these MCP files when running inside VS Code.',
-                '- This gives Copilot persistent workspace instructions so using NeuroTrace becomes part of its natural workflow.',
-                '',
-            ]
-            : []),
-        '### AGENTS.md (Universal)',
-        '- NeuroTrace generates or updates an `AGENTS.md` file at the workspace root.',
-        '- This is the universal standard read by Cursor, GitHub Copilot, Claude Code, Codex CLI, and other AI agents.',
-        '- The NeuroTrace section is delimited with `<!-- neurotrace-start -->` / `<!-- neurotrace-end -->` markers so it can be updated without overwriting your own content.',
-        '',
-        '## Recommended Prompt for New Chats',
-        'Use this at the beginning of each coding session:',
-        '',
-        '```text',
-        'Before coding, use NeuroTrace MCP tools:',
-        '1) neurotrace_getDatabaseStatus',
-        '2) If you know the file/module: neurotrace_getMemoriesByFile',
-        '3) If the problem is fuzzy: neurotrace_semanticSearch for: "<topic>"',
-        '4) neurotrace_searchThoughts to refine exact terms, names, or IDs',
-        'Then propose a plan based on this context.',
-        '```',
-        '',
-        '## Troubleshooting',
-        '- If you get `no_database`, initialize NeuroTrace in the workspace first.',
-        '- If you get `database_locked` in Codex, run `neurotrace --unlock --workspace <workspace>` in an external terminal on that host, outside the chat.',
-        '- If you get `database_locked` in the IDE, unlock the database from the NeuroTrace sidebar.',
-        '- If Cursor reports `bridge_unavailable`, open the NeuroTrace sidebar in Cursor and wait for the backend to start in that window.',
-        '- If startup fails, verify the executable path in the generated files.',
-        '- If Codex on Windows is WSL-sandboxed, the Windows template should invoke `wsl.exe` rather than a native Windows backend path.',
-        '- If Codex runs directly on macOS, Linux, or WSL but you used the Windows template, switch to `codex/codex.unix.config.toml`.',
-        '- If Codex is writing to the wrong repo, reload the IDE window for the repo you want to control Codex and start a fresh Codex chat/session.',
-        '',
-    ].join('\n');
 }
 
 function migrateLegacyMcpLayout(outputDir: string): void {
@@ -469,19 +218,6 @@ function migrateLegacyMcpLayout(outputDir: string): void {
     }
 }
 
-function upsertTomlBlock(existing: string, block: string): string {
-    const normalized = existing.replace(/\r\n/g, '\n');
-    const pattern = new RegExp(`${CODEX_MCP_MARKER_START}[\\s\\S]*?${CODEX_MCP_MARKER_END}\\n?`, 'm');
-    const replacement = `${CODEX_MCP_MARKER_START}\n${block}\n${CODEX_MCP_MARKER_END}\n`;
-
-    if (pattern.test(normalized)) {
-        return normalized.replace(pattern, replacement);
-    }
-
-    const trimmed = normalized.trimEnd();
-    return trimmed ? `${trimmed}\n\n${replacement}` : replacement;
-}
-
 async function syncCodexGlobalConfig(context: vscode.ExtensionContext, workspacePath: string, exePath: string): Promise<void> {
     const codexDir = path.join(os.homedir(), '.codex');
     const codexConfigPath = path.join(codexDir, 'config.toml');
@@ -491,9 +227,9 @@ async function syncCodexGlobalConfig(context: vscode.ExtensionContext, workspace
     const codexUsesWsl = os.platform() === 'win32' && isCodexInstalledInWsl();
     const block = os.platform() === 'win32'
         ? (codexUsesWsl
-            ? buildCodexWindowsViaWslToml(wslCommandPath, workspacePath)
-            : buildCodexWindowsToml(exePath, workspacePath)).trimEnd()
-        : buildCodexWslToml(wslCommandPath, workspacePath).trimEnd();
+            ? buildCodexWindowsViaWslToml(exePath, workspacePath, true)
+            : buildCodexWindowsToml(exePath, '.')).trimEnd()
+        : buildCodexWslToml(wslCommandPath, workspacePath, true).trimEnd();
 
     const existing = fs.existsSync(codexConfigPath) ? fs.readFileSync(codexConfigPath, 'utf8') : '';
     const updated = upsertTomlBlock(existing, block);
@@ -503,7 +239,7 @@ async function syncCodexGlobalConfig(context: vscode.ExtensionContext, workspace
         return;
     }
 
-    const wslBlock = buildCodexWslToml(wslCommandPath, workspacePath).trimEnd();
+    const wslBlock = buildCodexWslToml(wslCommandPath, workspacePath, true).trimEnd();
     const readScript = [
         'python3 - <<\'PY\'',
         'from pathlib import Path',
@@ -686,45 +422,6 @@ export function syncCursorGlobalConfig(context: vscode.ExtensionContext): void {
     } catch (error) {
         console.error('NeuroTrace MCP: Error syncing Cursor MCP config:', error);
     }
-}
-
-function escapeRegExp(value: string): string {
-    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-function upsertTomlTable(content: string, tableName: string, tableContent: string): string {
-    const normalizedBlock = tableContent.trimEnd() + '\n';
-    const tablePattern = new RegExp(
-        `(^|\\n)\\[${escapeRegExp(tableName)}\\][\\s\\S]*?(?=\\n\\[[^\\]]+\\]|$)`
-    );
-
-    if (tablePattern.test(content)) {
-        return content.replace(tablePattern, (match, prefix: string) => `${prefix}${normalizedBlock.trimEnd()}`);
-    }
-
-    const trimmed = content.trimEnd();
-    return `${trimmed}${trimmed ? '\n\n' : ''}${normalizedBlock}`;
-}
-
-function upsertTomlScalarInTable(content: string, tableName: string, key: string, value: string): string {
-    const tablePattern = new RegExp(
-        `(^|\\n)(\\[${escapeRegExp(tableName)}\\]\\n)([\\s\\S]*?)(?=\\n\\[[^\\]]+\\]|$)`
-    );
-
-    if (!tablePattern.test(content)) {
-        const trimmed = content.trimEnd();
-        return `${trimmed}${trimmed ? '\n\n' : ''}[${tableName}]\n${key} = ${value}\n`;
-    }
-
-    return content.replace(tablePattern, (match, prefix: string, header: string, body: string) => {
-        const keyPattern = new RegExp(`(^|\\n)${escapeRegExp(key)}\\s*=.*(?=\\n|$)`);
-        const trimmedBody = body.trimEnd();
-        const updatedBody = keyPattern.test(trimmedBody)
-            ? trimmedBody.replace(keyPattern, (keyMatch, keyPrefix: string) => `${keyPrefix}${key} = ${value}`)
-            : `${trimmedBody}${trimmedBody ? '\n' : ''}${key} = ${value}`;
-
-        return `${prefix}${header}${updatedBody}`;
-    });
 }
 
 /**
@@ -1120,9 +817,9 @@ export async function generateMcpWorkspaceFiles(
     const windsurfConfig = JSON.stringify(buildStdioMcpConfig(exePath, workspacePath), null, 2) + '\n';
     const grokConfig = buildGrokToml(exePath, '.') + '\n';
     const wslCommandPath = await resolveCodexWslCommandPath(context);
-    const codexWindowsToml = buildCodexWindowsToml(exePath, workspacePath);
-    const codexWslToml = buildCodexWslToml(wslCommandPath, workspacePath);
-    const agentsReadme = buildAgentsReadme(workspacePath, claudeConfig, exePath);
+    const codexWindowsToml = buildCodexWindowsToml(exePath, '.');
+    const codexWslToml = buildCodexWslToml(wslCommandPath, workspacePath, true);
+    const agentsReadme = buildAgentsReadme(workspacePath, claudeConfig, exePath, isCursorHost());
 
     const filesToWrite: Array<{ relativePath: string; content: string }> = [
         { relativePath: path.join('claude', 'claude.mcp.json'), content: claudeConfig },

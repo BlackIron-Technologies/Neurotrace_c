@@ -1,6 +1,7 @@
 """Network ownership, project roles, invitations and device credentials."""
 import hmac
 import time
+import json
 
 from .store import digest, identifier, require, secret
 
@@ -54,14 +55,17 @@ class Identity:
         return {"network": {"id": net["id"], "name": net["name"], "is_owner": net["owner"] == actor["id"]},
                 "actor": {k: actor[k] for k in ("id", "name", "kind")}, "projects": projects}
 
-    def create_project(self, actor, name):
+    def create_project(self, actor, name, repository=None):
         require(actor["kind"] == "human" and not actor["scope"], "Agents cannot create projects", 403)
         net = self.store.one("SELECT * FROM network")
         require(net["owner"] == actor["id"], "Only the network owner can create a shared project", 403)
         require(isinstance(name, str) and 0 < len(name.strip()) <= 100, "Enter a project name")
+        if repository is not None:
+            from .repository import validate_repository
+            repository = validate_repository(repository)
         with self.store.transaction():
             project = identifier()
-            self.store.conn.execute("INSERT INTO projects VALUES(?,?)", (project, name.strip()))
+            self.store.conn.execute("INSERT INTO projects(id,name,repository) VALUES(?,?,?)", (project, name.strip(), json.dumps(repository) if repository else None))
             self.store.conn.execute("INSERT INTO members VALUES(?,?,?)", (project, actor["id"], "owner"))
             self.store.log(project, actor["id"], "project_created", {"name": name.strip()})
         return {"id": project, "name": name.strip(), "role": "owner"}
@@ -81,8 +85,10 @@ class Identity:
             self.store.log(project, actor["id"], "invitation_created", {"name": name, "role": role, "kind": kind})
         return {"code": code, "expires_in": 3600}
 
-    def redeem(self, code):
+    def redeem(self, code, repository=None):
         with self.store.transaction():
+            from .repository_policy import RepositoryPolicy
+            RepositoryPolicy(self.store, self).preview(code, repository)
             invite = self.store.one("SELECT * FROM invites WHERE hash=? AND used=0 AND expires>?", (digest(code), time.time()))
             require(invite, "Invitation expired or already used", 403)
             sponsor = self.store.one("SELECT *, NULL AS scope FROM actors WHERE id=?", (invite["sponsor"],))
