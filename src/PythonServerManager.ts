@@ -11,6 +11,10 @@ interface PendingRequest {
 }
 
 export class PythonServerManager {
+    private readonly syncEmitter = new vscode.EventEmitter<void>();
+    public readonly onSyncChanged = this.syncEmitter.event;
+    public get extensionUri(): vscode.Uri { return this.context.extensionUri; }
+    private stdoutBuffer = '';
     private pythonProcess: cp.ChildProcess | null = null;
     private requests = new Map<string, PendingRequest>();
     private static instance: PythonServerManager;
@@ -269,10 +273,16 @@ export class PythonServerManager {
 
         // Listener for stdout and stderr
         this.pythonProcess.stdout?.on('data', (data) => {
-            const lines = data.toString().split('\n').filter((line: string) => line.trim() !== '');
+            this.stdoutBuffer += data.toString();
+            const lines = this.stdoutBuffer.split('\n');
+            this.stdoutBuffer = lines.pop() || '';
             for (const line of lines) {
                 try {
                     const response = JSON.parse(line);
+                    if (response.event === 'sync-changed') {
+                        this.syncEmitter.fire();
+                        continue;
+                    }
                     const pending = this.requests.get(response.id);
                     if (pending) {
                         if (response.success) {

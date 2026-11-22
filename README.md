@@ -15,6 +15,8 @@ NeuroTrace gives coding agents a persistent, code-linked memory layer that lives
 - File-scoped memories linked to source paths and line numbers
 - Interactive graph view for exploring related project context
 - Offline-capable runtime with no hosted account requirement
+- Optional real-time team sync with a configurable cloud or self-hosted server
+- Shared text editing, project roles, agent identities and attributed activity
 
 ## Local-First Model
 
@@ -27,6 +29,8 @@ The open-source runtime is designed to run on the user's machine:
 - No hosted account service is required by the open-source runtime.
 
 See [docs/PRIVACY.md](docs/PRIVACY.md) for the privacy model.
+
+Open **NeuroTrace Settings → Team sync** to join a team or create a network. The **Server** tab starts a local server and verifies the public URL supplied by your administrator. Tunnel creation and operation remain with the administrator. See [Team sync](docs/TEAM_SYNC.md) for deployment, permissions and recovery.
 
 ## Installation
 

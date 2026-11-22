@@ -57,6 +57,8 @@ async function main() {
 		await ctx.rebuild();
 		await ctx.dispose();
 	}
+	await esbuild.build({ entryPoints: ['src/liveEdit/browser.mts'], bundle: true, platform: 'browser',
+		format: 'iife', outfile: 'media/live-edit.js', minify: production, sourcemap: false });
 }
 
 main().catch(e => {

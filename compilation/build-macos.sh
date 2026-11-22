@@ -123,7 +123,7 @@ if [ "$UNIVERSAL" = "1" ]; then
 
         ( \
             cd "$build_dir" && \
-            cp -R ../../neurotrace.py ../../onnx_model . 2>/dev/null || true && \
+            cp -R ../../neurotrace.py ../../onnx_model ../../../bin/neurotrace_runtime ../../../bin/neurotrace_sync . && \
             cp ../../neurotrace.spec . 2>/dev/null || true && \
             $PY_CMD -m PyInstaller --clean neurotrace.spec --distpath dist --workpath build && \
             echo "Built $target_arch variant." \

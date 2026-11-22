@@ -6,7 +6,7 @@ on:
       version:
         description: 'Version tag (e.g., 0.9.0-beta.1)'
         required: true
-        default: '0.9.0-beta.1'
+        default: '1.3.1'
       create_release:
         description: 'Create GitHub Release?'
         required: true
@@ -36,6 +36,10 @@ jobs:
         pip install -r requirements-backend.txt
         pip install pyinstaller
 
+    - name: Test synchronization contracts
+      shell: bash
+      run: python -m unittest discover -s tests -p "test_sync*.py" -v
+
     - name: Fetch pinned ONNX model
       shell: pwsh
       run: ./compilation/fetch-onnx-model.ps1
@@ -61,6 +65,8 @@ jobs:
       run: |
         Write-Host "Running test suite on Windows executable..."
         python test_executable.py dist/neurotrace-windows/neurotrace.exe
+        $env:NEUROTRACE_TEST_EXECUTABLE = (Resolve-Path "dist/neurotrace-windows/neurotrace.exe").Path
+        python ../tests/mcp_backend_smoke.py
         
     - name: Upload Windows artifact
       uses: actions/upload-artifact@v4
@@ -90,6 +96,10 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements-backend.txt
         pip install pyinstaller
+
+    - name: Test synchronization contracts
+      shell: bash
+      run: python -m unittest discover -s tests -p "test_sync*.py" -v
 
     - name: Fetch pinned ONNX model
       shell: pwsh
@@ -131,6 +141,7 @@ jobs:
       run: |
         echo "Running test suite on Linux executable..."
         python test_executable.py dist/neurotrace-linux/neurotrace
+        NEUROTRACE_TEST_EXECUTABLE="$PWD/dist/neurotrace-linux/neurotrace" python ../tests/mcp_backend_smoke.py
         
     - name: Upload Linux artifact
       uses: actions/upload-artifact@v4
@@ -140,8 +151,8 @@ jobs:
         retention-days: 7
 
   build-macos:
-    name: Build macOS Backend (Apple Silicon)
-    runs-on: macos-14  # Apple Silicon runner - produces arm64 binary (compatible with Intel via Rosetta 2)
+    name: Build macOS Backend (native runner architecture)
+    runs-on: macos-14
     
     steps:
     - name: Checkout repository
@@ -161,6 +172,10 @@ jobs:
         pip install -r requirements-backend.txt
         pip install pyinstaller
 
+    - name: Test synchronization contracts
+      shell: bash
+      run: python -m unittest discover -s tests -p "test_sync*.py" -v
+
     - name: Fetch pinned ONNX model
       shell: pwsh
       run: ./compilation/fetch-onnx-model.ps1
@@ -170,7 +185,7 @@ jobs:
       run: |
         chmod +x build-macos.sh
         # Builds for native architecture (arm64 on macos-14)
-        # Compatible with Intel Macs via Rosetta 2
+        # Build Intel artifacts separately on an Intel runner when required.
         ./build-macos.sh
         
     - name: Verify macOS binary
@@ -202,6 +217,7 @@ jobs:
       run: |
         echo "Running test suite on macOS executable..."
         python test_executable.py dist/neurotrace-macos/neurotrace
+        NEUROTRACE_TEST_EXECUTABLE="$PWD/dist/neurotrace-macos/neurotrace" python ../tests/mcp_backend_smoke.py
         
     - name: Upload macOS artifact
       uses: actions/upload-artifact@v4

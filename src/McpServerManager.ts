@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { PythonServerManager } from './PythonServerManager';
 import { NEUROTRACE_WORKFLOW_LINES } from './workflowContent';
+import { syncTools } from './mcp/syncTools';
 
 // ── Input types ──────────────────────────────────────────────────────
 
@@ -28,6 +29,7 @@ interface ListThoughtsInput {
 interface EditThoughtInput {
     thought_id: string;
     new_text?: string;
+    base_text?: string;
     new_tags?: string;
     new_file_path?: string;
     new_line?: number;
@@ -229,10 +231,11 @@ class EditThoughtTool implements vscode.LanguageModelTool<EditThoughtInput> {
     ): Promise<vscode.LanguageModelToolResult> {
         const blocked = await checkDbReady(this.server);
         if (blocked) { return blocked; }
-        const { thought_id, new_text, new_tags, new_file_path, new_line, new_snippet, new_priority, new_status } = options.input;
+        const { thought_id, new_text, base_text, new_tags, new_file_path, new_line, new_snippet, new_priority, new_status } = options.input;
         const updated = await this.server.sendCommand<any>('edit', {
             thought_id,
             new_text,
+            base_text,
             new_tags,
             new_file_path,
             new_line,
@@ -551,10 +554,12 @@ class GetDatabaseStatusTool implements vscode.LanguageModelTool<Record<string, n
 
             // UNENCRYPTED or UNLOCKED — DB is accessible
             const count = await this.server.sendCommand<{ total: number }>('get_total_count');
+            const sync = await this.server.sendCommand('sync_status');
             return jsonResult({
                 database_status: status,
                 total_thoughts: count.total,
-                backend_running: true
+                backend_running: true,
+                sync
             });
         } catch {
             return jsonResult({
@@ -581,6 +586,7 @@ export function registerMcpTools(
     serverManager: PythonServerManager
 ): void {
     const tools: [string, vscode.LanguageModelTool<any>][] = [
+        ...syncTools(serverManager),
         ['neurotrace_addThought', new AddThoughtTool(serverManager)],
         ['neurotrace_listThoughts', new ListThoughtsTool(serverManager)],
         ['neurotrace_editThought', new EditThoughtTool(serverManager)],

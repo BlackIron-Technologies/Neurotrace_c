@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { LiveMemoryPanel } from './liveEdit/LiveMemoryPanel';
 import * as path from 'path';
 import { NeuroTraceSidebarProvider } from './NeuroTraceSidebarProvider';
 import { PythonServerManager } from './PythonServerManager';
@@ -225,6 +226,11 @@ export async function addThoughtCommand(serverManager: PythonServerManager, side
  * @param id - The ID of the thought to edit
  */
 export async function editThoughtCommand(serverManager: PythonServerManager, sidebarProvider: NeuroTraceSidebarProvider, id: string) {
+    const sync = await serverManager.sendCommand<{ project_id?: string }>('sync_status');
+    if (sync.project_id) {
+        await LiveMemoryPanel.show(serverManager, id);
+        return;
+    }
     const currentThought = await sidebarProvider.getThoughtById(id);
     if (!currentThought) {
         vscode.window.showErrorMessage('Could not find memory to edit.');

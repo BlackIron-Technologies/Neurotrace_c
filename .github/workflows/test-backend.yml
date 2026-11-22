@@ -5,6 +5,8 @@ on:
   push:
     paths:
       - 'compilation/neurotrace.py'
+      - 'bin/**'
+      - 'tests/**'
       - 'compilation/fetch-onnx-model.ps1'
       - 'compilation/smoke-onnx-model.py'
       - 'compilation/test_executable.py'
@@ -13,6 +15,8 @@ on:
   pull_request:
     paths:
       - 'compilation/neurotrace.py'
+      - 'bin/**'
+      - 'tests/**'
       - 'compilation/fetch-onnx-model.ps1'
       - 'compilation/smoke-onnx-model.py'
       - 'compilation/test_executable.py'
@@ -56,7 +60,11 @@ jobs:
       working-directory: compilation
       shell: bash
       run: |
-        python -m py_compile neurotrace.py
+        python -m compileall -q ../bin neurotrace.py
+
+    - name: Test team synchronization and storage
+      shell: bash
+      run: python -m unittest discover -s tests -p "test_sync*.py" -v
         
     - name: Smoke test ONNX model
       shell: bash

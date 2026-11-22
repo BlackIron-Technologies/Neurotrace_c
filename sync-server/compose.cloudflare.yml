@@ -1,0 +1,17 @@
+services:
+  cloudflared:
+    image: cloudflare/cloudflared:2026.11.1
+    restart: unless-stopped
+    command: ["tunnel", "--no-autoupdate", "run"]
+    environment:
+      TUNNEL_TOKEN_FILE: /run/secrets/tunnel_token
+    secrets:
+      - tunnel_token
+    depends_on:
+      neurotrace-sync:
+        condition: service_healthy
+    security_opt:
+      - no-new-privileges:true
+secrets:
+  tunnel_token:
+    file: ${NEUROTRACE_TUNNEL_TOKEN_FILE:-./.secrets/tunnel-token}

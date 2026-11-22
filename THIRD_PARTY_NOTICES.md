@@ -19,6 +19,7 @@ These direct runtime dependencies are declared in `package.json` and resolved in
 | `cytoscape` | 3.33.0 | MIT | npm registry |
 | `cytoscape-cola` | 2.5.1 | MIT | npm registry |
 | `cytoscape-edgehandles` | 4.0.1 | MIT | npm registry |
+| `yjs` | 13.6.31 | MIT | https://github.com/yjs/yjs |
 
 The extension bundle may include transitive runtime code from these packages.
 For each release, generate or inspect the full bundled dependency notice from
@@ -55,6 +56,9 @@ The backend release build installs the direct dependencies from
 | `transformers` | 4.55.4 | Apache-2.0 | Tokenizer/config loading for embeddings. |
 | `numpy` | 2.3.3 | BSD-style | Binary wheels can include OpenBLAS/LAPACK/GCC runtime notices. |
 | `python-dotenv` | 1.1.1 | BSD-3-Clause | Local environment-file utility. |
+| `aiohttp` | 3.14.5 | Apache-2.0 AND MIT | HTTP and WebSocket transport. |
+| `pycrdt` | 0.14.1 | MIT | Yrs/Yjs-compatible CRDT bindings. |
+| `keyring` | 25.7.0 | MIT | Operating-system credential storage. |
 
 Release binaries created with PyInstaller also include PyInstaller bootloader
 and collected transitive Python packages. The generated backend archives should

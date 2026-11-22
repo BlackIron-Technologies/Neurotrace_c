@@ -35,7 +35,10 @@ $requiredPackages = @(
     "onnxruntime",
     "sqlcipher3-wheels",
     "transformers",
-    "numpy"
+    "numpy",
+    "aiohttp",
+    "pycrdt",
+    "keyring"
 )
 
 $missingPackages = @()

@@ -1,6 +1,6 @@
 # NeuroTrace Privacy
 
-Effective date: June 19, 2026
+Effective date: November 21, 2026
 
 NeuroTrace is designed as a local-first open-source developer tool. The core workflow stores project memory on your machine and does not require a hosted account service.
 
@@ -28,7 +28,13 @@ When database encryption is enabled, NeuroTrace uses SQLCipher-backed local encr
 
 ## Hosted Services
 
-The open-source runtime model does not include hosted account services or usage analytics collection.
+Team synchronization is optional and disabled until you connect from Settings. You choose the server, hosted in the cloud or on hardware you control. Connecting shares the project's memories, linked snippets, relative code paths, relationships and attributed change history with that server and authorized project members. Publishing existing workspace memories requires an explicit selection.
+
+The sync server can read shared content. HTTPS protects transport and SQLCipher can protect your local database; this is not end-to-end encryption. Your local database passphrase is never sent to the sync server. Local embeddings, indexes, daemon credentials and graph layout are not synchronized.
+
+Device credentials live in the operating system's credential store. Workspace bindings are machine-local. Invitations are single-use and expire after one hour; device sessions expire after 90 days. Revoking access prevents future downloads and uploads, but cannot erase a copy already downloaded by another member.
+
+The service retains project change history, deletion markers and operation receipts. It also stores per-device applied cursors, timestamps and their member identity to report delivery. A device acknowledgement does not mean a person read the memory. Hosting operators are responsible for backups, access to server storage and applicable retention obligations. A temporary Cloudflare tunnel routes test traffic through Cloudflare and stops being useful when its connector stops. No usage analytics are collected by NeuroTrace.
 
 ## Third-Party Services
 

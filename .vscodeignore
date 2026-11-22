@@ -41,6 +41,7 @@ AGENTS.md
 compilation/**
 releases/**
 bin/dist/**
+!bin/dist/neurotrace-windows/**
 bin/onnx_model/**
 bin/__pycache__/**
 
@@ -50,6 +51,14 @@ bin/__pycache__/**
 
 # Logs
 *.log
+**/__pycache__/**
+reports/**
+research_notes/**
+tests/**
+sync-server/**
+output/**
+.playwright-cli/**
+.playwright/**
 
 # Temporary/local-only features
 neuro_enterprise/**

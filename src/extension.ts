@@ -66,6 +66,15 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	// Initialize managers
 	const serverManager = PythonServerManager.getInstance(context);
+	let syncRefreshTimer: NodeJS.Timeout | undefined;
+	context.subscriptions.push(serverManager.onSyncChanged(() => {
+		if (syncRefreshTimer) { clearTimeout(syncRefreshTimer); }
+		syncRefreshTimer = setTimeout(() => {
+			void vscode.commands.executeCommand('neurotrace.refreshSidebar');
+			globalGraphPanel?.forceRefresh();
+		}, 80);
+	}));
+	context.subscriptions.push({ dispose: () => { if (syncRefreshTimer) { clearTimeout(syncRefreshTimer); } } });
 	const globalUsageManager = new GlobalUsageManager(context);
 	globalPasswordAttemptManager = new PasswordAttemptManager(context);
 	const welcomeExperienceManager = new WelcomeExperienceManager(context);

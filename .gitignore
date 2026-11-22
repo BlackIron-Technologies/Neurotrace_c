@@ -26,6 +26,10 @@
 /bin/.pytest_cache/
 /bin/*.pyc
 /bin/*.pyo
+/bin/dist/
+**/__pycache__/
+/output/
+/.playwright-cli/
 /bin/*.spec.bak
 /compilation/__pycache__/
 /onnx_model/
@@ -38,3 +42,7 @@
 !/.github/ISSUE_TEMPLATE/
 !/.github/ISSUE_TEMPLATE/**
 !/.github/pull_request_template.md
+
+/media/live-edit.js
+/sync-server/.env
+/sync-server/.secrets/

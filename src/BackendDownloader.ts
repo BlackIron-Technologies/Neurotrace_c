@@ -144,6 +144,7 @@ export class BackendDownloader {
         if (
             backendPath &&
             !backendPath.toLowerCase().endsWith('.py') &&
+            !this.isBundledBackend(backendPath) &&
             !this.isPathInsidePersistentInstall(backendPath)
         ) {
             console.log(`NeuroTrace: Backend is installed in legacy storage (${backendPath}); migration to persistent install path required.`);
@@ -171,11 +172,18 @@ export class BackendDownloader {
         return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
     }
 
+    private isBundledBackend(candidatePath: string): boolean {
+        const bundledRoot = path.resolve(this.context.extensionUri.fsPath, 'bin', 'dist');
+        const relative = path.relative(bundledRoot, path.resolve(candidatePath));
+        return relative !== '' && !relative.startsWith('..') && !path.isAbsolute(relative);
+    }
+
     public isUsingLegacyBackendStorage(): boolean {
         const backendPath = this.getBackendPath();
         return Boolean(
             backendPath &&
             !backendPath.toLowerCase().endsWith('.py') &&
+            !this.isBundledBackend(backendPath) &&
             !this.isPathInsidePersistentInstall(backendPath)
         );
     }
@@ -778,6 +786,7 @@ export class BackendDownloader {
         const executableName = backendExecutableName(platform);
 
         return [
+            path.join(this.context.extensionUri.fsPath, 'bin', 'dist', `neurotrace-${platformName}`, executableName),
             path.join(installPath, `neurotrace-${platformName}`, executableName),
             path.join(installPath, executableName),
             path.join(installPath, 'dist', `neurotrace-${platformName}`, executableName),

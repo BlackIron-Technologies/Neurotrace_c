@@ -48,6 +48,8 @@ hiddenimports += [
 ]
 hiddenimports += collect_submodules('tokenizers')
 hiddenimports += collect_submodules('numpy')
+hiddenimports += collect_submodules('keyring.backends')
+hiddenimports += collect_submodules('pycrdt')
 
 # Additional specific imports that might be missed
 hiddenimports += [
@@ -69,7 +71,7 @@ print("Building open-source backend bundle")
 
 a = Analysis(
     ['neurotrace.py'],
-    pathex=[bin_path],
+    pathex=[bin_path, os.path.join(bin_path, '..', 'bin')],
     binaries=[],
     datas=datas,
     hiddenimports=hiddenimports,
