@@ -5,7 +5,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
 import { spawnSync } from 'child_process';
-import { BackendDownloader, getPersistentBackendExecutablePath, getPersistentBackendInstallRoot } from './BackendDownloader';
+import { BackendDownloader, getPersistentBackendInstallRoot } from './BackendDownloader';
 import { ensureCopilotInstructions } from './McpServerManager';
 import { NEUROTRACE_WORKFLOW_LINES } from './workflowContent';
 
@@ -665,16 +665,7 @@ function getBackendExecutablePath(context: vscode.ExtensionContext): string | nu
 }
 
 function getMcpBackendExecutablePath(context: vscode.ExtensionContext): string | null {
-    const platform = os.platform();
-    const persistentPath = getPersistentBackendExecutablePath(platform);
-    const downloadedPath = getBackendExecutablePath(context);
-    if (downloadedPath && path.resolve(downloadedPath) === path.resolve(persistentPath)) {
-        return downloadedPath;
-    }
-
-    // MCP templates are long-lived and should point at the stable install path
-    // even before the next backend download has populated it.
-    return persistentPath;
+    return getBackendExecutablePath(context);
 }
 
 /**
