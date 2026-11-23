@@ -116,7 +116,12 @@ def _read_daemon_info(workspace_path: Optional[str]):
 
     info_path = _get_daemon_info_path(workspace_path)
     try:
-        return _validate_endpoint_workspace(json.loads(info_path.read_text(encoding="utf-8")), workspace_path)
+        info = json.loads(info_path.read_text(encoding="utf-8"))
+        if type(info.get('pid')) is not int or info['pid'] <= 0:
+            raise DaemonUnavailableError('Daemon metadata has no verifiable process owner; inspect it before restarting.')
+        if not pid_alive(info['pid']):
+            raise DaemonUnavailableError('The recorded NeuroTrace daemon process has exited.')
+        return _validate_endpoint_workspace(info, workspace_path)
     except BackendCommandError:
         raise
     except Exception as exc:
@@ -216,6 +221,8 @@ def _ensure_standalone_daemon_running(workspace_path: Optional[str]):
                         info = json.loads(current.read_text(encoding='utf-8'))
                     except (OSError, ValueError):
                         raise DaemonUnavailableError('Daemon metadata is unreadable; inspect the existing process before restarting.') from None
+                    if type(info.get('pid')) is not int or info['pid'] <= 0:
+                        raise DaemonUnavailableError('Daemon metadata has no verifiable process owner; inspect it before restarting.')
                     if pid_alive(info.get('pid')):
                         time.sleep(0.1)
                         continue

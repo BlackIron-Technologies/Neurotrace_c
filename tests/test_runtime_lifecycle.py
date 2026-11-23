@@ -27,6 +27,30 @@ def workspace(root):
 
 
 class RuntimeLifecycleTests(unittest.TestCase):
+    def test_upgrade_replaces_exited_legacy_daemon_metadata(self):
+        with tempfile.TemporaryDirectory() as root:
+            directory = Path(root) / '.neurotrace'
+            directory.mkdir()
+            info_path = directory / 'standalone_daemon.json'
+            info_path.write_text(json.dumps({'pid': 12345, 'protocol': 1}), encoding='utf-8')
+            def spawn(_args):
+                info_path.write_text(json.dumps({'pid': os.getpid(), 'protocol': 2, 'workspace': str(Path(root).resolve())}), encoding='utf-8')
+            with patch.object(daemon_client, 'pid_alive', side_effect=lambda pid: pid == os.getpid()), \
+                 patch.object(daemon_client, '_spawn_detached_process', side_effect=spawn) as start, \
+                 patch.object(daemon_client, '_send_socket_command', return_value={}):
+                self.assertEqual(daemon_client._ensure_standalone_daemon_running(root)['protocol'], 2)
+                start.assert_called_once()
+
+    def test_live_legacy_daemon_is_not_replaced(self):
+        with tempfile.TemporaryDirectory() as root:
+            directory = Path(root) / '.neurotrace'
+            directory.mkdir()
+            (directory / 'standalone_daemon.json').write_text(json.dumps({'pid': os.getpid(), 'protocol': 1}), encoding='utf-8')
+            with patch.object(daemon_client, '_spawn_detached_process') as start:
+                with self.assertRaises(daemon_client.BackendCommandError):
+                    daemon_client._ensure_standalone_daemon_running(root)
+                start.assert_not_called()
+
     def test_version_paths_do_not_import_embedding_dependencies(self):
         for entry in (ENTRY, ENTRY.parents[1] / 'compilation/neurotrace.py'):
             result = subprocess.run([sys.executable, '-X', 'importtime', str(entry), '--version'],
