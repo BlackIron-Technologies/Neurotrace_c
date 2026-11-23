@@ -14,6 +14,7 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'bin'))
 from neurotrace_runtime import daemon_client
 from neurotrace_runtime.mcp_protocol import DaemonUnavailableError
+from neurotrace_version import BACKEND_VERSION
 
 ENTRY = Path(__file__).resolve().parents[1] / 'bin/neurotrace.py'
 
@@ -55,13 +56,13 @@ class RuntimeLifecycleTests(unittest.TestCase):
         for entry in (ENTRY, ENTRY.parents[1] / 'compilation/neurotrace.py'):
             result = subprocess.run([sys.executable, '-X', 'importtime', str(entry), '--version'],
                                     capture_output=True, text=True, timeout=5, check=True)
-            self.assertEqual(result.stdout.strip(), '1.3.4')
+            self.assertEqual(result.stdout.strip(), BACKEND_VERSION)
             self.assertNotIn('numpy', result.stderr)
             self.assertNotIn('transformers', result.stderr)
         executable = os.environ.get('NEUROTRACE_TEST_EXECUTABLE')
         if executable:
             result = subprocess.run([executable, '--version'], capture_output=True, text=True, timeout=5, check=True)
-            self.assertEqual(result.stdout.strip(), '1.3.4')
+            self.assertEqual(result.stdout.strip(), BACKEND_VERSION)
 
     def test_live_unresponsive_daemon_is_preserved(self):
         info = {'pid': os.getpid()}
