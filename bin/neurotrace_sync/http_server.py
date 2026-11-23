@@ -15,9 +15,13 @@ from .repository_policy import RepositoryPolicy
 from .repository import validate_repository, RepositoryMismatch
 
 
-def create_app(database, setup_key):
+def create_app(database, setup_key="", local_address=None):
     store = Store(database)
+    if not store.one('SELECT 1 FROM network') and not setup_key:
+        store.close()
+        raise ValueError('Set NEUROTRACE_SYNC_SETUP_KEY before starting a new network')
     identity = Identity(store, setup_key)
+    local_record = None
     domain = Domain(store, identity)
     receipts = Receipts(store, identity)
     repositories = RepositoryPolicy(store, identity)
@@ -73,6 +77,23 @@ def create_app(database, setup_key):
         return web.json_response({"protocol": 1, "capabilities": ["device_receipts", "repository_binding"],
                                   "instance_id": store.one("SELECT value FROM server_metadata WHERE key='instance_id'")['value'],
                                   "initialized": bool(store.one("SELECT * FROM network"))})
+
+    async def local_stop(request):
+        import hmac
+        require(local_record and request.remote == '127.0.0.1' and
+                hmac.compare_digest(request.headers.get('X-NeuroTrace-Control', ''), local_record['control_token']),
+                'Local server control denied', 403)
+        def stop_loop():
+            raise web.GracefulExit()
+        asyncio.get_running_loop().call_later(0.1, stop_loop)
+        return web.json_response({'stopping': True})
+
+    async def started(app):
+        nonlocal local_record
+        if local_address and local_address[0] == '127.0.0.1':
+            from .local_server import publish
+            local_record = publish(database, *local_address,
+                                   store.one("SELECT value FROM server_metadata WHERE key='instance_id'")['value'])
 
     async def bootstrap(request):
         data = await request.json()
@@ -173,6 +194,9 @@ def create_app(database, setup_key):
         for ws, _, _, _ in tuple(connections):
             await ws.close(code=1001, message=b"Server shutdown")
         store.close()
+        if local_record:
+            from .local_server import forget
+            forget(database)
 
     app = web.Application(middlewares=[errors], client_max_size=1024 * 1024)
     app.router.add_get("/v1/status", status)
@@ -184,6 +208,8 @@ def create_app(database, setup_key):
     app.router.add_post("/v1/network/transfer", transfer_network)
     app.router.add_get("/v1/projects/{project}/ws", websocket)
     app.router.add_route("*", "/v1/projects/{project}/{action}", project_api)
+    app.router.add_post("/v1/local-stop", local_stop)
+    app.on_startup.append(started)
     app.on_cleanup.append(cleanup)
     return app
 
@@ -198,9 +224,8 @@ def main():
     parser.add_argument("--database", required=True)
     args = parser.parse_args()
     Path(args.database).parent.mkdir(parents=True, exist_ok=True)
-    require(os.environ.get("NEUROTRACE_SYNC_SETUP_KEY"), "Set NEUROTRACE_SYNC_SETUP_KEY before starting the server")
     # Access logs deliberately omit credentials and request bodies.
-    web.run_app(create_app(args.database, os.environ["NEUROTRACE_SYNC_SETUP_KEY"]), host=args.host,
+    web.run_app(create_app(args.database, os.environ.get("NEUROTRACE_SYNC_SETUP_KEY", ""), (args.host, args.port)), host=args.host,
                 port=args.port, access_log=None, print=None)
 
 

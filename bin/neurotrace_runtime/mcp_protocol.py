@@ -408,7 +408,7 @@ def _daemon_unavailable_content(workspace_path: Optional[str]):
         json.dumps(
             {
                 "error": "daemon_unavailable",
-                "message": "NeuroTrace standalone daemon is unavailable. Open the NeuroTrace sidebar in your IDE and use `Unlock for Codex` to launch the unlock flow in the integrated terminal, then retry.",
+                "message": "NeuroTrace standalone daemon did not respond. Retry after it finishes starting or inspect the workspace daemon process. Unlock is only needed when the database reports LOCKED.",
             }
         )
     )

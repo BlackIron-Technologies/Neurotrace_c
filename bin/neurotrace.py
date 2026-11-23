@@ -1,7 +1,7 @@
 """NeuroTrace backend entry point."""
 import sys
 
-BACKEND_VERSION = "1.3.3"
+from neurotrace_version import BACKEND_VERSION
 
 if __name__ == "__main__":
     if "--version" in sys.argv:

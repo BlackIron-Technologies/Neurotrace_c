@@ -7,12 +7,19 @@ Includes all necessary dependencies: FAISS, ONNX Runtime, transformers, sqlciphe
 
 import sys
 import os
+import importlib.util
 from PyInstaller.utils.hooks import collect_data_files, collect_submodules
 
 # Get the absolute path to the bin directory
 bin_path = SPECPATH
 
 block_cipher = None
+
+required_modules = ('faiss', 'onnxruntime', 'transformers', 'sqlcipher3', 'numpy', 'aiohttp', 'pycrdt', 'keyring')
+missing_modules = [name for name in required_modules if importlib.util.find_spec(name) is None]
+if missing_modules:
+    raise SystemExit('Missing build dependencies: ' + ', '.join(missing_modules) +
+                     '. Install compilation/requirements-backend.txt with this Python interpreter before building.')
 
 # Collect all necessary hidden imports
 hiddenimports = [

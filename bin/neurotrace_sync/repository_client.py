@@ -54,7 +54,7 @@ class RepositoryClientMixin:
             raise RepositoryMismatch('Database repository identity is missing. Reconnect through a verified project import.')
         require_same_repository(previous, current)
 
-    def preview_connection(self, server_url, code):
+    def preview_connection(self, server_url, code, path_policy='reject', type_map=None):
         repository = workspace_repository(self.workspace_path)
         previous = database_repository(self.conn) if self.conn else None
         if previous:
@@ -64,6 +64,8 @@ class RepositoryClientMixin:
         result = remote.request('/v1/invitations/inspect', {'code': code, 'repository': repository})
         if self.conn:
             check_local_project(self.conn, result['project_id'])
+        from .import_validation import preview_import
+        result['import_validation'] = preview_import(self.conn, self.workspace_path, path_policy, type_map)
         return result
 
     def repository_control(self, action='status'):

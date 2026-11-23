@@ -38,8 +38,8 @@ class Identity:
         return row["role"] if actor["kind"] != "agent" else ("editor" if rank >= 1 else "viewer")
 
     def bootstrap(self, key, name, display_name):
-        require(self.setup_key and hmac.compare_digest(key, self.setup_key), "Invalid setup key", 403)
         require(not self.store.one("SELECT * FROM network"), "Network already initialized", 409)
+        require(self.setup_key and hmac.compare_digest(key, self.setup_key), "Invalid setup key", 403)
         require(isinstance(name, str) and 0 < len(name.strip()) <= 100, "Enter a network name")
         require(isinstance(display_name, str) and 0 < len(display_name.strip()) <= 100, "Enter your name")
         with self.store.transaction():
@@ -78,6 +78,8 @@ class Identity:
         require(kind == "device" or ROLES[role] <= ROLES[current], "Cannot grant more permissions than you hold", 403)
         require(kind != "agent" or role in ("viewer", "editor"), "Agents can only read or edit")
         require(isinstance(name, str) and 0 < len(name.strip()) <= 100, "Enter a member name")
+        if kind == "device":
+            role, name = current, actor["name"]
         code = secret()
         with self.store.transaction():
             self.store.conn.execute("INSERT INTO invites(hash,project,role,sponsor,kind,name,expires) VALUES(?,?,?,?,?,?,?)",

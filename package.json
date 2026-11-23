@@ -2,7 +2,7 @@
   "name": "neurotrace",
   "displayName": "NeuroTrace",
   "description": "Operational memory for AI agents and developers. Persistent decisions, insights, and tasks linked to your code across chats and sessions. Local-first, encrypted, offline.",
-  "version": "1.3.3",
+  "version": "1.3.4",
   "publisher": "BlackIronTechnologies",
   "license": "MIT",
   "contributors": [
@@ -698,6 +698,23 @@
               "type": "boolean",
               "default": false,
               "description": "Validate invitation and local repository without consuming the invitation or exchanging memories."
+            },
+            "path_policy": {
+              "type": "string",
+              "enum": [
+                "reject",
+                "remap",
+                "detach"
+              ],
+              "default": "reject",
+              "description": "Explicit legacy path policy: reject outside paths; remap existing repository suffixes; or retain the original code reference in text."
+            },
+            "type_map": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              },
+              "description": "Explicit mapping from legacy types to supported memory types, for example finding to insight."
             }
           }
         }

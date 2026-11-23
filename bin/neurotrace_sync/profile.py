@@ -9,7 +9,7 @@ from urllib.error import HTTPError
 
 import keyring
 
-USER_AGENT = "NeuroTrace/1.3.3"
+USER_AGENT = "NeuroTrace/1.3.4"
 
 
 def normalize_url(value):

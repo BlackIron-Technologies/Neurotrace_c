@@ -152,6 +152,26 @@ class AgentSyncTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(server.conn.execute('SELECT COUNT(*) FROM thoughts').fetchone()[0], 0)
         self.assertIsNone(Profile(path).read())
 
+    async def test_invalid_legacy_import_reports_all_errors_before_consuming_invite(self):
+        from neurotrace_sync.import_validation import ImportValidationError
+        invitation = await self.request('POST', '/v1/projects/' + self.project + '/invite',
+                                        {'kind': 'human', 'role': 'editor', 'name': 'Peer'}, self.owner)
+        path = git_workspace(self.root / 'legacy-import')
+        server = NeuroTraceServer(None)
+        server.set_workspace(str(path)); server._ensure_database_ready(); self.clients.append(server)
+        with server.conn:
+            server.conn.execute("INSERT INTO thoughts(id,text,type,file_path) VALUES('old','Preserve','finding','/other/checkout/src/file.ts')")
+        link = self.url + '/#join=' + invitation['code']
+        preview = await self.command(server, 'connect', {'invitation_url': link, 'preview_only': True})
+        self.assertEqual(len(preview['import_validation']['issues']), 2)
+        with self.assertRaises(ImportValidationError) as rejected:
+            await self.command(server, 'connect', {'invitation_url': link, 'publish_existing': True, 'confirm_legacy_repository': True})
+        self.assertEqual(len(rejected.exception.report['issues']), 2)
+        member = await self.request('POST', '/v1/join', {'code': invitation['code']})
+        self.assertEqual(member['project_id'], self.project)
+        self.assertEqual(server.conn.execute('SELECT text FROM thoughts').fetchone()[0], 'Preserve')
+        self.assertIsNone(Profile(path).read())
+
     async def test_git_origin_change_blocks_pending_writes_and_restoration_resumes(self):
         import subprocess
         owner = await self.client('owner')

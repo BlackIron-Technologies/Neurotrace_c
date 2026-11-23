@@ -6,7 +6,12 @@ import uuid
 from .domain import FIELDS
 
 
-def import_existing(replica, snapshot, local, relations):
+def import_existing(replica, snapshot, local, relations, path_policy='reject', type_map=None):
+    from .import_validation import prepare_import, ImportValidationError
+    originals = local
+    local, validation = prepare_import(replica.workspace, local, path_policy, type_map)
+    if not validation['valid']:
+        raise ImportValidationError(validation)
     remote = {row['id']: row for row in snapshot['records']}
     mapping, creates, collisions, reused = {}, [], [], []
     for row in local:
@@ -25,13 +30,13 @@ def import_existing(replica, snapshot, local, relations):
         creates.append((record_id, fields, row['text']))
     backup_id = str(uuid.uuid4())
     report = {'imported_memories': len(creates), 'reused_memories': len(reused), 'preserved_versions': collisions,
-              'imported_relations': 0, 'skipped_relations': [], 'backup_id': backup_id,
+              'validation': validation, 'imported_relations': 0, 'skipped_relations': [], 'backup_id': backup_id,
               'backup_location': 'sync_import_backups in this local database; same encryption as the database'}
     # Keep the original logical data inside the same database, including SQLCipher protection.
     with replica.conn:
         replica.conn.execute('CREATE TABLE IF NOT EXISTS sync_import_backups(id TEXT PRIMARY KEY,at REAL,thoughts TEXT,relations TEXT,report TEXT)')
         replica.conn.execute('INSERT INTO sync_import_backups VALUES(?,?,?,?,?)',
-                             (backup_id, time.time(), json.dumps([{k: v for k, v in row.items() if k != 'embedding'} for row in local]), json.dumps(relations), json.dumps(report)))
+                             (backup_id, time.time(), json.dumps([{k: v for k, v in row.items() if k != 'embedding'} for row in originals]), json.dumps(relations), json.dumps(report)))
         replica.conn.execute('DELETE FROM relations')
         replica.conn.execute('DELETE FROM thoughts')
         for record in sorted(snapshot['records'], key=lambda value: value['kind'] == 'relation'):

@@ -13,7 +13,7 @@
   window.NeuroTraceWizard = class {
     constructor(get, send) {
       this.get = get; this.send = send; this.mode = 'join'; this.location = ''; this.step = 'choice';
-      this.busy = false; this.hosting = {}; this.verifiedUrl = ''; this.workspace = {}; this.local = null; this.invitationPreview = null; this.previewRequest = null;
+      this.busy = false; this.hosting = {}; this.verifiedUrl = ''; this.workspace = {}; this.local = null; this.invitationPreview = null; this.previewRequest = null; this.typeMap = {}; this.importValidation = null;
       get('choose-join').onclick = () => this.choose('join');
       get('use-project-link').onclick = () => this.choose('join');
       get('choose-create').onclick = () => this.choose('create');
@@ -75,7 +75,8 @@
       if (this.busy) { return; }
       try {
         if (this.step === 'invitation') { const connection = this.invitation(); this.previewRequest = {...connection, id: (this.previewRequest?.id || 0) + 1}; this.send('preview-connection', {...connection, requestId: this.previewRequest.id}); return; }
-        if (this.step === 'start' && (!this.hosting.running || !this.hosting.setup_key)) { throw Error('Select Start NeuroTrace server or Use running server before continuing.'); }
+        if (this.step === 'start' && !this.hosting.running) { throw Error('Select Start NeuroTrace server or Use running server before continuing.'); }
+        if (this.step === 'start' && this.hosting.initialized === false && !this.hosting.setup_key) { throw Error('This new server is awaiting its setup key. Finish claiming it from the window that started it, or ask the administrator for its setup key.'); }
         if (this.step === 'endpoint') {
           if (this.verifiedUrl !== this.origin(this.get('server-url').value)) { throw Error('Verify this server address before continuing.'); }
           if (this.location !== 'local' && !this.get('setup-key').value.trim()) { throw Error('Enter the setup key supplied by the administrator of this new server.'); }
@@ -86,6 +87,7 @@
           if (this.local.count > 0 && this.local.legacy_unverified && !this.get('confirm-legacy').checked) { throw Error('Confirm that these legacy memories belong to the observed repository before importing.'); }
           if (this.local.count > 0 && !this.get('publish').checked) { throw Error('Select the checkbox to share your existing memories, or cancel and use an empty workspace.'); }
         }
+        if (this.step === 'memories') { this.send('import-preview', {pathPolicy: this.get('import-path-policy').value, typeMap: this.typeMap}); return; }
         if (this.step === 'review') { this.send('connect', this.payload()); return; }
         const path = this.path(); this.show(path[path.indexOf(this.step) + 1]);
       } catch (error) { this.error(error.message); }
@@ -93,11 +95,13 @@
     payload() {
       const connection = this.mode === 'join' ? this.invitation() : {serverUrl: this.verifiedUrl, code: ''};
       return {...connection, mode: this.mode, setupKey: this.mode === 'create' ? (this.location === 'local' ? this.hosting.setup_key : this.get('setup-key').value.trim()) : '',
-        name: this.get('your-name').value.trim(), networkName: this.get('network-name').value.trim(), projectName: this.get('project-name').value.trim(), confirmLegacy: this.get('confirm-legacy').checked, publish: this.local.count > 0 && this.get('publish').checked};
+        name: this.get('your-name').value.trim(), networkName: this.get('network-name').value.trim(), projectName: this.get('project-name').value.trim(), pathPolicy: this.get('import-path-policy').value, typeMap: this.typeMap, confirmLegacy: this.get('confirm-legacy').checked, publish: this.local.count > 0 && this.get('publish').checked};
     }
     review() {
       const values = [['Workspace', this.workspace.name], ['Server', this.mode === 'join' ? this.invitation().serverUrl : this.verifiedUrl], ['Connection', this.mode === 'join' ? 'Join “' + this.invitationPreview.project_name + '” in “' + this.invitationPreview.network_name + '”' : 'Create network “' + this.get('network-name').value.trim() + '” and project “' + this.get('project-name').value.trim() + '”'], ['Existing memories', this.local.count ? this.local.count + (this.local.count === 1 ? ' local memory will be imported and shared' : ' local memories will be imported and shared') : 'No local memories to upload']];
       values.push(['Repository', this.local.repository.origin + (this.local.repository.scope ? ' / ' + this.local.repository.scope : '')], ['Branches', 'Different branches of this repository are allowed']);
+      if (this.mode === 'join') { values.push(['Identity', this.invitationPreview.actor_name], ['Access', this.invitationPreview.role], ['Joining as', this.invitationPreview.kind === 'device' ? 'Another device of the same person' : this.invitationPreview.kind]); }
+      values.push(['Code references', this.get('import-path-policy').selectedOptions[0].textContent], ['Import changes', String(this.importValidation?.transformations.length || 0)]);
       const list = this.get('setup-review'); list.replaceChildren();
       for (const [label, value] of values) { const term = document.createElement('dt'), detail = document.createElement('dd'); term.textContent = label; detail.textContent = value; list.append(term, detail); }
       this.get('review-effect').textContent = this.mode === 'join' ? 'Connect downloads the shared project and starts automatic sync. Any local memories selected for import will be shared with its members.' : 'Create network & connect makes you the network and project owner. You can invite your team after setup. Other workspaces stay unchanged.';
@@ -115,14 +119,35 @@
       const current = this.invitation();
       if (current.code !== this.previewRequest.code || current.serverUrl !== this.previewRequest.serverUrl) { this.error('Invitation changed; verify it again.'); return; }
       this.invitationPreview = result; this.show('memories');
+      if (result.import_validation) { this.renderImport(result.import_validation); }
+    }
+    renderImport(report) {
+      this.importValidation = report;
+      const issues = this.get('import-validation-issues'); issues.replaceChildren();
+      this.get('import-validation-summary').textContent = report.valid ? 'All memories passed validation. ' + report.transformations.length + ' explicit change(s) will be applied; originals remain in the local backup.' : report.issues.length + ' problem(s) need review before importing.';
+      for (const issue of report.issues) {
+        const item = document.createElement('li'); item.textContent = issue.id + ' - ' + issue.field + ': ' + issue.error + (issue.suggested_path ? ' - Matching file: ' + issue.suggested_path : ''); issues.append(item);
+        if (issue.field === 'type' && !this.get('import-type-mappings').querySelector('[data-legacy-type="' + CSS.escape(String(issue.value)) + '"]')) {
+          const label = document.createElement('label'), select = document.createElement('select');
+          label.textContent = 'Import type "' + issue.value + '" as'; select.dataset.legacyType = issue.value;
+          for (const value of ['', 'note', 'task', 'decision', 'hypothesis', 'insight', 'risk', 'discard']) { const option = document.createElement('option'); option.value = value; option.textContent = value || 'Choose a supported type'; select.append(option); }
+          select.onchange = () => { if (select.value) { this.typeMap[issue.value] = select.value; } else { delete this.typeMap[issue.value]; } };
+          label.append(select); this.get('import-type-mappings').append(label);
+        }
+      }
+    }
+    importChecked(report) {
+      if (this.step !== 'memories') { return; }
+      this.renderImport(report);
+      if (report.valid) { this.show('review'); } else { this.error('Review every import problem below, then continue again.'); }
     }
     hostInfo(hosting) {
       if (hosting.running && hosting.url === this.hosting.url && !hosting.setup_key) { hosting.setup_key = this.hosting.setup_key; }
       this.hosting = hosting; this.invalidate();
-      this.get('host-status').textContent = hosting.running ? 'Running at ' + hosting.url + '. Continue to publish this address.' : 'Server has not been started from this window.';
+      this.get('host-status').textContent = hosting.running ? 'Running at ' + hosting.url + '. Continue to publish this address.' : 'No local server was discovered.';
       this.get('origin-address').textContent = hosting.url || '';
       this.get('local-server-management').hidden = !hosting.running;
-      this.get('managed-host-status').textContent = hosting.running ? 'This window started a local server at ' + hosting.url + '. Stopping it affects every connected project.' : '';
+      this.get('managed-host-status').textContent = hosting.running ? 'Local server at ' + hosting.url + '. Stopping it affects every connected project.' : '';
       this.get('host-start').textContent = hosting.running ? 'Use running server' : 'Start NeuroTrace server';
       this.controls();
     }
@@ -138,7 +163,7 @@
       const next = this.get('setup-next'); this.get('setup-back').hidden = this.step === 'choice';
       next.hidden = ['choice', 'location'].includes(this.step);
       next.textContent = this.step === 'review' ? (this.mode === 'join' ? 'Connect this workspace' : 'Create network & connect') : 'Continue →';
-      next.disabled = this.busy || (this.step === 'start' && (!this.hosting.running || !this.hosting.setup_key)) || (this.step === 'endpoint' && !this.verifiedUrl) || (this.step === 'memories' && !this.local?.ready);
+      next.disabled = this.busy || (this.step === 'start' && !this.hosting.running) || (this.step === 'endpoint' && !this.verifiedUrl) || (this.step === 'memories' && !this.local?.ready);
       this.get('host-start').disabled = this.busy || Boolean(this.hosting.running && this.hosting.setup_key);
       this.get('wizard').setAttribute('aria-busy', String(this.busy));
     }

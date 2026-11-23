@@ -65,6 +65,12 @@ def execute_backend_command(server, command, payload):
                        'graph-data', 'graph-insights', 'get_memories_by_file', 'sync_edit_context', 'sync_text_update',
                        'add-relation', 'delete-relation', 'update-edge-type'}:
             server.guard_repository()
+        if command == 'sync_import_preview':
+            from neurotrace_sync.import_validation import preview_import
+            return preview_import(server.conn, server.workspace_path, **payload)
+        if command == 'sync_service':
+            from neurotrace_sync.services import service_control
+            return service_control(**payload)
         if command == 'sync_server_info':
             from neurotrace_sync.server_info import inspect_server
             return inspect_server(**payload)

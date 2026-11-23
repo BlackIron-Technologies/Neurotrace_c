@@ -34,6 +34,8 @@ from .commands import execute_backend_command
 from .mcp_remote import _handle_mcp_tool_call_via_bridge, _handle_mcp_tool_call_via_daemon
 def main_mcp():
     """MCP stdio server main loop (JSON-RPC 2.0)."""
+    from .stdio import configure_stdio
+    configure_stdio()
     # Parse workspace from CLI args
     workspace_path = None
     args = sys.argv[1:]
@@ -108,72 +110,7 @@ def _parse_workspace_arg(args) -> Optional[str]:
     return None
 
 
-def main_daemon():
-    workspace_path = _parse_workspace_arg(sys.argv[1:])
-    if not workspace_path:
-        print("Missing required --workspace argument.", file=sys.stderr)
-        sys.exit(1)
-
-    server = NeuroTraceServer(None)
-    execute_backend_command(server, 'set_workspace', {'workspace': workspace_path})
-    daemon_token = uuid.uuid4().hex
-
-    class ThreadedDaemonServer(socketserver.ThreadingTCPServer):
-        allow_reuse_address = True
-        daemon_threads = True
-
-    class DaemonHandler(socketserver.StreamRequestHandler):
-        def handle(self):
-            while True:
-                line = self.rfile.readline()
-                if not line:
-                    break
-
-                req_id = None
-                try:
-                    req = json.loads(line.decode("utf-8"))
-                    req_id = req.get("id")
-                    if req.get("token") != daemon_token:
-                        response = {
-                            "id": req_id,
-                            "error": "Unauthorized daemon request.",
-                            "success": False,
-                        }
-                    else:
-                        from .commands import validate_workspace_request
-                        validate_workspace_request(req, server.workspace_path)
-                        result = execute_backend_command(
-                            server,
-                            req.get("command", ""),
-                            req.get("payload", {}),
-                        )
-                        response = {"id": req_id, "data": result, "success": True}
-                except Exception as e:
-                    response = {
-                        "id": req_id,
-                        "error": f"Python Error: {type(e).__name__}: {e}",
-                        "success": False,
-                    }
-
-                self.wfile.write((json.dumps(response) + "\n").encode("utf-8"))
-                self.wfile.flush()
-
-    daemon_server = ThreadedDaemonServer(("127.0.0.1", 0), DaemonHandler)
-    daemon_port = int(daemon_server.server_address[1])
-    _write_daemon_info(workspace_path, "127.0.0.1", daemon_port, daemon_token)
-
-    try:
-        daemon_server.serve_forever()
-    finally:
-        try:
-            daemon_server.server_close()
-        except Exception:
-            pass
-        _remove_daemon_info(workspace_path)
-        try:
-            server.cleanup_and_exit()
-        except Exception:
-            pass
+from .daemon import main_daemon
 
 
 def main_unlock():
@@ -205,6 +142,8 @@ def main_unlock():
 
 def main():
     """Main loop of the server (custom protocol for VS Code extension)."""
+    from .stdio import configure_stdio
+    configure_stdio()
     # 1. Initialize the server without a database yet.
     bridge_enabled = os.environ.get("NEUROTRACE_ENABLE_BRIDGE") == "1"
     server = NeuroTraceServer(None, bridge_enabled=bridge_enabled)

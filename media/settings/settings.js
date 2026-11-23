@@ -36,6 +36,9 @@
   get('recover-owner').onclick = () => send('recover');
   get('open-tunnel-setup').onclick = () => send('open-tunnel-setup');
   get('protect-repository').onclick = () => send('protect-repository');
+  get('service-install').onclick = () => send('service-install', {port: Number(get('host-port').value || 9473)});
+  get('service-uninstall').onclick = () => send('service-uninstall');
+  get('service-refresh').onclick = () => send('service-refresh');
   get('host-stop').onclick = () => send('host-stop');
   get('pause').onclick = () => send('pause', {paused: status.enabled});
   get('check-sync').onclick = () => send('check-sync');
@@ -83,7 +86,14 @@
       for (const entry of message.activity.events) { const row = document.createElement('div'), detail = document.createElement('small'); row.className = 'activity-entry'; row.textContent = entry.actor + ' · ' + entry.action.replaceAll('_', ' '); detail.textContent = new Date(entry.at * 1000).toLocaleString(); row.append(detail); container.append(row); }
       if (!message.activity.events.length) { container.textContent = 'No project activity yet.'; }
     }
-    if (message.type === 'hosting') { wizard.hostInfo(message.hosting); }
+    if (message.type === 'hosting') {
+      wizard.hostInfo(message.hosting);
+      const service = message.hosting.service || {};
+      get('service-status').textContent = service.installed ? 'Background hosting installed · ' + (message.hosting.running ? 'Server running' : 'Server needs attention; check ' + service.log) : 'Background hosting is not installed on this computer.';
+      get('service-install').hidden = Boolean(service.installed); get('service-uninstall').hidden = !service.installed;
+      get('host-stop').hidden = Boolean(service.installed);
+    }
+    if (message.type === 'import-preview') { wizard.importChecked(message.result); }
     if (message.type === 'invitation-preview') { wizard.invitationChecked(message.result, message.requestId); }
     if (message.type === 'server-checked') { wizard.serverChecked(message.result); }
   });

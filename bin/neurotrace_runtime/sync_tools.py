@@ -68,3 +68,11 @@ SYNC_TOOL_DEFINITIONS.append({
         'action': {'type': 'string', 'enum': ['status', 'protect_project'], 'default': 'status'}}},
     'annotations': {'readOnlyHint': False, 'destructiveHint': False, 'idempotentHint': True}})
 SYNC_TOOL_COMMANDS['neurotrace_repository'] = 'sync_repository'
+
+for definition in SYNC_TOOL_DEFINITIONS:
+    if definition['name'] == 'neurotrace_connect':
+        properties = definition['inputSchema']['properties']
+        properties['path_policy'] = {'type': 'string', 'enum': ['reject', 'remap', 'detach'], 'default': 'reject',
+            'description': 'Explicit legacy path policy: reject outside paths; remap existing repository suffixes; or retain the original code reference in text.'}
+        properties['type_map'] = {'type': 'object', 'additionalProperties': {'type': 'string'},
+            'description': 'Explicit mapping from legacy types to supported memory types, for example finding to insight.'}

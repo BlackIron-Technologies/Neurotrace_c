@@ -153,7 +153,7 @@ class Replica:
                 cursor = event['seq']
             self.conn.execute("UPDATE sync_binding SET cursor=? WHERE project=?", (max(cursor, page["cursor"]), self.project))
 
-    def initialize(self, snapshot, publish=False):
+    def initialize(self, snapshot, publish=False, path_policy='reject', type_map=None):
         if self.cursor() or self.conn.execute("SELECT 1 FROM sync_canonical LIMIT 1").fetchone():
             return
         local = [dict(r) for r in self.conn.execute("SELECT * FROM thoughts")]
@@ -166,7 +166,7 @@ class Replica:
             raise ValueError("Read-only members cannot publish local memories")
         if local and publish:
             from .importing import import_existing
-            return import_existing(self, snapshot, local, relations)
+            return import_existing(self, snapshot, local, relations, path_policy, type_map)
         # Import, outgoing operations and initial cursor share a single commit.
         with self.conn:
             self.conn.execute("UPDATE sync_binding SET cursor=? WHERE project=?", (snapshot["cursor"], self.project))

@@ -67,7 +67,7 @@ export class SettingsController implements vscode.Disposable {
             server_url: serverUrl, mode: message.mode, code, setup_key: String(message.setupKey || ''),
             name: String(message.name || ''), network_name: String(message.networkName || ''),
             project_name: String(message.projectName || ''), publish: Boolean(message.publish),
-            confirm_legacy_repository: Boolean(message.confirmLegacy)
+            confirm_legacy_repository: Boolean(message.confirmLegacy), path_policy: String(message.pathPolicy || 'reject'), type_map: message.typeMap || {}
           });
           this.post({ type: 'connected', importReport: result.import_report });
           await this.workspace();
@@ -152,6 +152,23 @@ export class SettingsController implements vscode.Disposable {
         }
         case 'server-check':
           this.post({ type: 'server-checked', result: await this.backend.sendCommand('sync_server_info', { server_url: String(message.serverUrl || ''), local: Boolean(message.local) }) });
+          break;
+        case 'service-refresh':
+          this.post({ type: 'hosting', hosting: await this.backend.sendCommand('sync_host_status') });
+          break;
+        case 'service-install':
+        case 'service-uninstall': {
+          if (!vscode.workspace.isTrusted) { throw new Error('Trust this workspace before changing background hosting.'); }
+          if (message.type === 'service-uninstall') {
+            const choice = await vscode.window.showWarningMessage('Remove background hosting and stop this local server? Shared data is preserved. The tunnel is unaffected.', { modal: true }, 'Remove service');
+            if (choice !== 'Remove service') { break; }
+          }
+          await this.backend.sendCommand('sync_service', { action: message.type === 'service-install' ? 'install' : 'uninstall', port: Number(message.port || 9473) });
+          this.post({ type: 'hosting', hosting: await this.backend.sendCommand('sync_host_status') });
+          break;
+        }
+        case 'import-preview':
+          this.post({ type: 'import-preview', result: await this.backend.sendCommand('sync_import_preview', { path_policy: String(message.pathPolicy || 'reject'), type_map: message.typeMap || {} }) });
           break;
         case 'preview-connection': {
           let code = String(message.code || ''), serverUrl = String(message.serverUrl || '');

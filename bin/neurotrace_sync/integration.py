@@ -54,7 +54,7 @@ class SyncMixin(SyncControl, SyncAdministration, RepositoryClientMixin):
         self.sync_worker = SyncWorker(self, profile, token, replica)
         self.sync_worker.start()
 
-    def sync_connect(self, server_url, mode="join", code="", setup_key="", name="", network_name="", project_name="", project_id="", publish=False, confirm_legacy_repository=False):
+    def sync_connect(self, server_url, mode="join", code="", setup_key="", name="", network_name="", project_name="", project_id="", publish=False, confirm_legacy_repository=False, path_policy='reject', type_map=None):
         if self.conn is None:
             raise ValueError("Initialize and unlock this workspace before connecting")
         if Profile(self.workspace_path).read():
@@ -73,6 +73,11 @@ class SyncMixin(SyncControl, SyncAdministration, RepositoryClientMixin):
             raise ValueError('Legacy memories have no repository identity. Explicitly confirm that they belong to this repository before importing.')
         if mode == "create" and not all(isinstance(v, str) and 0 < len(v.strip()) <= 100 for v in (name, network_name, project_name)):
             raise ValueError("Enter your name, network name and shared project name")
+        if publish:
+            from .import_validation import preview_import, ImportValidationError
+            validation = preview_import(self.conn, self.workspace_path, path_policy, type_map)
+            if not validation['valid']:
+                raise ImportValidationError(validation)
         status = compatible_server(remote)
         profile_store = Profile(self.workspace_path)
         profile_store.prepare_credentials(remote.url)
@@ -114,7 +119,7 @@ class SyncMixin(SyncControl, SyncAdministration, RepositoryClientMixin):
         check_local_project(self.conn, project_id)
         snapshot = remote.request("/v1/projects/" + project_id + "/snapshot")
         replica = Replica(self.conn, self.workspace_path, project_id)
-        import_report = replica.initialize(snapshot, publish=publish)
+        import_report = replica.initialize(snapshot, publish=publish, path_policy=path_policy, type_map=type_map)
         with self.conn:
             pin_database(self.conn, repository)
         profile = {"server_url": remote.url, "project_id": project_id, "actor_id": credentials["actor_id"],

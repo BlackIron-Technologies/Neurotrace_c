@@ -38,10 +38,14 @@ class RepositoryPolicy:
         invite = self.store.one('SELECT * FROM invites WHERE hash=? AND used=0 AND expires>?', (digest(code), time.time()))
         require(invite, 'Invitation expired or already used', 403)
         sponsor = self.store.one('SELECT *, NULL AS scope FROM actors WHERE id=?', (invite['sponsor'],))
-        self.identity.role(sponsor, invite['project'], 'viewer' if invite['kind'] == 'device' else 'admin')
+        sponsor_role = self.identity.role(sponsor, invite['project'], 'viewer' if invite['kind'] == 'device' else 'admin')
+        from .identity import ROLES
+        require(invite['kind'] == 'device' or ROLES[sponsor_role] >= ROLES[invite['role']], 'Invitation sponsor permissions changed', 403)
         expected = self.project_repository(invite['project'])
         require_same_repository(expected, repository)
         project = self.store.one('SELECT name FROM projects WHERE id=?', (invite['project'],))
         return {'project_id': invite['project'], 'project_name': project['name'],
                 'network_name': self.store.one('SELECT name FROM network')['name'],
-                'repository': expected, 'role': invite['role'], 'expires_at': invite['expires']}
+                'repository': expected, 'role': sponsor_role if invite['kind'] == 'device' else invite['role'],
+                'kind': invite['kind'], 'actor_name': sponsor['name'] if invite['kind'] == 'device' else invite['name'],
+                'expires_at': invite['expires']}

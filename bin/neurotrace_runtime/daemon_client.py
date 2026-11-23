@@ -1,3 +1,4 @@
+from neurotrace_platform.processes import ProcessLock, pid_alive, atomic_json
 from .common import (BACKEND_ROOT, Optional, Path, STANDALONE_DAEMON_INFO_FILENAME, json, os, socket, subprocess, sys, time, uuid)
 
 from .mcp_protocol import (
@@ -92,27 +93,18 @@ def _get_daemon_info_path(workspace_path: str) -> Path:
 def _write_daemon_info(workspace_path: str, host: str, port: int, token: str) -> Path:
     info_path = _get_daemon_info_path(workspace_path)
     info_path.parent.mkdir(parents=True, exist_ok=True)
-    info_path.write_text(
-        json.dumps(
-            {
-                'protocol': 2,
-                "host": host,
-                "port": port,
-                "token": token,
-                "pid": os.getpid(),
-                "workspace": str(Path(workspace_path).resolve()),
-            }
-        ),
-        encoding="utf-8",
-    )
+    atomic_json(info_path, {'protocol': 2, 'host': host, 'port': port, 'token': token,
+                            'pid': os.getpid(), 'workspace': str(Path(workspace_path).resolve())})
     return info_path
 
 
-def _remove_daemon_info(workspace_path: str) -> None:
+def _remove_daemon_info(workspace_path: str, expected_pid=None) -> None:
     info_path = _get_daemon_info_path(workspace_path)
     if not info_path.exists():
         return
     try:
+        if expected_pid is not None and json.loads(info_path.read_text(encoding='utf-8')).get('pid') != expected_pid:
+            return
         info_path.unlink()
     except OSError:
         pass
@@ -194,32 +186,48 @@ def _spawn_detached_process(args):
 def _ensure_standalone_daemon_running(workspace_path: Optional[str]):
     if not workspace_path:
         raise DaemonUnavailableError("Workspace path is required to use NeuroTrace standalone mode.")
-
-    try:
-        daemon_info = _read_daemon_info(workspace_path)
-        _send_socket_command(daemon_info, "check_db_status", {})
-        return daemon_info
-    except BackendCommandError:
-        raise
-    except Exception:
-        _remove_daemon_info(workspace_path)
-
-    Path(workspace_path, ".neurotrace").mkdir(parents=True, exist_ok=True)
-    _spawn_detached_process(_build_daemon_spawn_args(workspace_path))
-
-    deadline = time.time() + 5.0
+    workspace_path = str(Path(workspace_path).resolve())
+    deadline = time.monotonic() + 8.0
+    spawned = False
     last_error = None
-    while time.time() < deadline:
+    while time.monotonic() < deadline:
         try:
             daemon_info = _read_daemon_info(workspace_path)
-            _send_socket_command(daemon_info, "check_db_status", {})
-            return daemon_info
-        except Exception as exc:
-            last_error = exc
-            time.sleep(0.1)
-
+        except BackendCommandError:
+            raise
+        except DaemonUnavailableError:
+            daemon_info = None
+        if daemon_info:
+            try:
+                _send_socket_command(daemon_info, 'check_db_status', {})
+                return daemon_info
+            except BackendCommandError:
+                raise
+            except (OSError, RuntimeError) as exc:
+                last_error = exc
+                if pid_alive(daemon_info.get('pid')):
+                    time.sleep(0.1)
+                    continue
+        try:
+            with ProcessLock(Path(workspace_path) / '.neurotrace' / 'daemon-start.lock'):
+                current = _get_daemon_info_path(workspace_path)
+                if current.exists():
+                    try:
+                        info = json.loads(current.read_text(encoding='utf-8'))
+                    except (OSError, ValueError):
+                        raise DaemonUnavailableError('Daemon metadata is unreadable; inspect the existing process before restarting.') from None
+                    if pid_alive(info.get('pid')):
+                        time.sleep(0.1)
+                        continue
+                if not spawned:
+                    _remove_daemon_info(workspace_path)
+                    _spawn_detached_process(_build_daemon_spawn_args(workspace_path))
+                    spawned = True
+        except BlockingIOError:
+            pass
+        time.sleep(0.1)
     raise DaemonUnavailableError(
-        "NeuroTrace standalone daemon could not be started."
+        'NeuroTrace daemon did not respond in time. A live process was preserved; retry or inspect its process. No database unlock is required by this error.'
     ) from last_error
 
 

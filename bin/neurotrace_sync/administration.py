@@ -50,7 +50,7 @@ class SyncAdministration:
                 'hosting': 'Local process; administrator manages public tunnel and always-on service separately.'}
 
     def connect(self, invitation_url='', server_url='', setup_key_file='', name='', network_name='',
-                project_name='', publish_existing=False, confirm_legacy_repository=False, preview_only=False):
+                project_name='', publish_existing=False, confirm_legacy_repository=False, preview_only=False, path_policy='reject', type_map=None):
         if self.conn is None:
             error = self._ensure_database_ready()
             if error:
@@ -62,8 +62,8 @@ class SyncAdministration:
                 raise ValueError('Provide the complete invitation link')
             url = invitation.scheme + '://' + invitation.netloc
             if preview_only:
-                return self.preview_connection(url, code)
-            return self.sync_connect(url, code=code, publish=publish_existing, confirm_legacy_repository=confirm_legacy_repository)
+                return self.preview_connection(url, code, path_policy, type_map)
+            return self.sync_connect(url, code=code, publish=publish_existing, confirm_legacy_repository=confirm_legacy_repository, path_policy=path_policy, type_map=type_map)
         if not setup_key_file:
             raise ValueError('Provide an invitation URL, or a server URL and private bootstrap key file for a new network')
         key = Path(setup_key_file)
@@ -71,7 +71,7 @@ class SyncAdministration:
             raise ValueError('Choose a small, private file containing only the server setup key')
         return self.sync_connect(server_url, mode='create', setup_key=key.read_text(encoding='utf-8').strip(),
                                  name=name or getpass.getuser(), network_name=network_name, project_name=project_name,
-                                 publish=publish_existing, confirm_legacy_repository=confirm_legacy_repository)
+                                 publish=publish_existing, confirm_legacy_repository=confirm_legacy_repository, path_policy=path_policy, type_map=type_map)
 
     def team(self, action='members', name='', role='editor', kind='human', member_id='', repository_url='', workspace_scope=''):
         if action == 'members':
