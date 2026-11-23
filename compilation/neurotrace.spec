@@ -15,7 +15,7 @@ bin_path = SPECPATH
 
 block_cipher = None
 
-required_modules = ('faiss', 'onnxruntime', 'transformers', 'sqlcipher3', 'numpy', 'aiohttp', 'pycrdt', 'keyring')
+required_modules = ('faiss', 'onnxruntime', 'transformers', 'sqlcipher3', 'numpy', 'aiohttp', 'pycrdt', 'keyring', 'certifi')
 missing_modules = [name for name in required_modules if importlib.util.find_spec(name) is None]
 if missing_modules:
     raise SystemExit('Missing build dependencies: ' + ', '.join(missing_modules) +

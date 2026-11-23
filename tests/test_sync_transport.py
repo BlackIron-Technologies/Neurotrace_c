@@ -55,3 +55,60 @@ class TransportTests(unittest.TestCase):
         request = opener.open.call_args.args[0]
         self.assertEqual(request.get_header('User-agent'), USER_AGENT)
         self.assertEqual(request.get_header('Authorization'), 'Bearer private')
+
+    def test_sync_tls_trusts_bundled_roots_without_system_paths(self):
+        import ssl
+        from neurotrace_sync import tls
+        tls.client_context.cache_clear()
+        with patch.dict('os.environ', {'SSL_CERT_FILE': '/nonexistent/cert.pem', 'SSL_CERT_DIR': '/nonexistent'}):
+            context = tls.client_context()
+        tls.client_context.cache_clear()
+        self.assertEqual(context.verify_mode, ssl.CERT_REQUIRED)
+        self.assertTrue(context.check_hostname)
+        subjects = {value for cert in context.get_ca_certs() for rdn in cert['subject'] for key, value in rdn if key == 'commonName'}
+        self.assertIn('ISRG Root X1', subjects)
+
+    def test_remote_uses_the_sync_tls_context(self):
+        from urllib.request import HTTPSHandler
+        from neurotrace_sync import tls
+        opener = MagicMock()
+        opener.open.return_value.__enter__.return_value.read.return_value = b'{}'
+        with patch('neurotrace_sync.profile.build_opener', return_value=opener) as build:
+            Remote('https://memory.example.com').request('/v1/status')
+        handlers = [handler for handler in build.call_args.args if isinstance(handler, HTTPSHandler)]
+        self.assertEqual(len(handlers), 1)
+        self.assertIs(handlers[0]._context, tls.client_context())
+
+    def _run_worker_until_connector_fails(self, failure):
+        import asyncio
+        import threading
+        from neurotrace_sync import worker as worker_module
+        server = MagicMock(command_lock=threading.Lock(), event_sink=None)
+        profile = {'server_url': 'https://memory.example.com', 'project_id': 'project', 'repository': {'id': 'repository'}}
+        sync = worker_module.SyncWorker(server, profile, 'token', MagicMock())
+
+        def connector(**kwargs):
+            sync.stop_event.set()
+            sync.wake_event.set()
+            connector.kwargs = kwargs
+            raise failure
+
+        with patch.object(worker_module.aiohttp, 'TCPConnector', side_effect=connector):
+            asyncio.run(asyncio.wait_for(sync.synchronize(), 5))
+        return sync, connector.kwargs
+
+    def test_worker_uses_the_sync_tls_context(self):
+        import aiohttp
+        from neurotrace_sync import tls
+        _, kwargs = self._run_worker_until_connector_fails(aiohttp.ClientConnectionError('offline'))
+        self.assertIs(kwargs['ssl'], tls.client_context())
+
+    def test_worker_treats_certificate_failures_as_offline_not_repository_mismatch(self):
+        import ssl
+        import aiohttp
+        failure = aiohttp.ClientConnectorCertificateError(MagicMock(host='memory.example.com', port=443, ssl=True),
+                                                          ssl.SSLCertVerificationError(1, 'certificate verify failed'))
+        self.assertIsInstance(failure, ValueError)
+        sync, _ = self._run_worker_until_connector_fails(failure)
+        self.assertEqual(sync.state, 'paused')
+        self.assertIn('certificate verify failed', sync.error)

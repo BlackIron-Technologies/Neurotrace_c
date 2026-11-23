@@ -4,10 +4,12 @@ import json
 import os
 from pathlib import Path
 from urllib.parse import urlsplit
-from urllib.request import HTTPRedirectHandler, Request, build_opener
+from urllib.request import HTTPRedirectHandler, HTTPSHandler, Request, build_opener
 from urllib.error import HTTPError
 
 import keyring
+
+from .tls import client_context
 
 USER_AGENT = "NeuroTrace/1.3.4"
 
@@ -49,7 +51,7 @@ class Remote:
             headers['X-NeuroTrace-Repository'] = self.repository['id']
         request = Request(self.url + path, data=json.dumps(data).encode() if data is not None else None, headers=headers)
         try:
-            with build_opener(NoRedirect()).open(request, timeout=timeout) as response:
+            with build_opener(NoRedirect(), HTTPSHandler(context=client_context())).open(request, timeout=timeout) as response:
                 return json.load(response)
         except HTTPError as exc:
             try:
