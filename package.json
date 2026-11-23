@@ -969,8 +969,9 @@
     "pretest": "npm run compile",
     "check-types": "tsc --noEmit",
     "lint": "eslint src",
-    "test": "npm run check-python && npm run check-onnx",
-    "test:sync": "python -m unittest discover -s tests -p 'test_sync*.py' -v"
+    "test": "npm run check-python && npm run check-onnx && npm run test:backend-install",
+    "test:sync": "python -m unittest discover -s tests -p 'test_sync*.py' -v",
+    "test:backend-install": "node tests/check_backend_install.cjs"
   },
   "devDependencies": {
     "@types/adm-zip": "^0.5.5",

@@ -4,7 +4,8 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as https from 'https';
 import { spawnSync } from 'child_process';
-import AdmZip = require('adm-zip');
+import { activateBackendArchive } from './backendInstall/transaction';
+import { stopInstalledBackends } from './backendInstall/processes';
 import { createWriteStream } from 'fs';
 import * as config from './config.json';
 
@@ -215,22 +216,6 @@ export class BackendDownloader {
         }
 
         return 0;
-    }
-
-    /**
-     * Gets the path to the version file
-     */
-    private saveBackendVersion(version: string): void {
-        const versionFilePath = this.getInstalledBackendVersionFilePath();
-        const binPath = path.dirname(versionFilePath);
-
-        // Ensure global storage directory exists
-        if (!fs.existsSync(binPath)) {
-            fs.mkdirSync(binPath, { recursive: true });
-        }
-
-        fs.writeFileSync(versionFilePath, version, 'utf-8');
-        console.log(`NeuroTrace: Saved backend version: ${version}`);
     }
 
     private getBackendVersionFromExecutable(backendPath: string): string | null {
@@ -487,7 +472,7 @@ export class BackendDownloader {
      * Downloads the backend with user-initiated action
      * @returns Path to the backend executable or null if download failed/cancelled
      */
-    public async downloadBackend(): Promise<string | null> {
+    public async downloadBackend(beforeActivate?: () => Promise<void>): Promise<string | null> {
         const platform = os.platform();
 
         // Download with progress indication
@@ -497,7 +482,7 @@ export class BackendDownloader {
             cancellable: true
         }, async (progress, token) => {
             try {
-                const success = await this.downloadAndExtractBackend(platform, progress, token);
+                const success = await this.downloadAndExtractBackend(platform, progress, token, false, beforeActivate);
                 const backendPath = this.getBackendPath();
                 if (success && backendPath) {
                     vscode.window.showInformationMessage('NeuroTrace backend downloaded successfully!');
@@ -519,7 +504,7 @@ export class BackendDownloader {
      * Downloads the backend silently in the background (for automatic updates)
      * @returns Path to the backend executable or null if download failed
      */
-    public async downloadBackendSilently(): Promise<string | null> {
+    public async downloadBackendSilently(beforeActivate?: () => Promise<void>): Promise<string | null> {
         const platform = os.platform();
 
         // Download silently with minimal UI (status bar only)
@@ -529,7 +514,7 @@ export class BackendDownloader {
             cancellable: false
         }, async (progress, token) => {
             try {
-                const success = await this.downloadAndExtractBackend(platform, progress, token, true);
+                const success = await this.downloadAndExtractBackend(platform, progress, token, true, beforeActivate);
                 const backendPath = this.getBackendPath();
                 if (success && backendPath) {
                     console.log('NeuroTrace: Backend updated silently to version', this.MINIMUM_BACKEND_VERSION);
@@ -553,7 +538,8 @@ export class BackendDownloader {
         platform: string,
         progress: vscode.Progress<{ message?: string; increment?: number }>,
         token: vscode.CancellationToken,
-        silent: boolean = false
+        silent: boolean = false,
+        beforeActivate?: () => Promise<void>
     ): Promise<boolean> {
         const version = this.context.extension.packageJSON.version;
         const platformName = this.getPlatformName(platform);
@@ -584,32 +570,15 @@ export class BackendDownloader {
                 throw new Error('Download cancelled by user');
             }
 
-            // Extract to a stable per-user install directory so external MCP
-            // clients can keep pointing at the same backend path.
-            if (!silent) {
-                progress.report({ message: 'Extracting files...', increment: 80 });
-            }
-            const extractPath = getPersistentBackendInstallRoot(platform);
-            fs.mkdirSync(extractPath, { recursive: true });
-
-            await this.extractZip(zipPath, extractPath);
-
-            if (token.isCancellationRequested) {
-                throw new Error('Extraction cancelled by user');
-            }
-
-            // Set executable permissions on Unix systems
-            if (platform !== 'win32') {
-                const backendPath = this.getBackendPath();
-                if (backendPath && fs.existsSync(backendPath)) {
-                    fs.chmodSync(backendPath, 0o755);
-                }
-            }
-
-            const downloadedVersion =
-                this.getBackendVersionFromExecutable(this.getBackendPath() || '') ||
-                this.MINIMUM_BACKEND_VERSION;
-            this.saveBackendVersion(downloadedVersion);
+            const checksums = path.join(tempDir, 'SHA256SUMS.txt');
+            await this.downloadFile(downloadUrl.slice(0, downloadUrl.lastIndexOf('/') + 1) + 'SHA256SUMS.txt', checksums, progress, token, true);
+            if (token.isCancellationRequested) { throw new Error('Download cancelled by user'); }
+            await activateBackendArchive({
+                archive: zipPath, checksums, installRoot: getPersistentBackendInstallRoot(platform),
+                platform: platformName, version: this.MINIMUM_BACKEND_VERSION,
+                readVersion: executable => this.getBackendVersionFromExecutable(executable),
+                beforeActivate: async () => { await beforeActivate?.(); this.terminateRunningBackendProcesses(getPersistentBackendInstallRoot(platform)); }
+            });
 
             if (!silent) {
                 progress.report({ message: 'Download complete!', increment: 100 });
@@ -719,24 +688,6 @@ export class BackendDownloader {
                 }
                 reject(new Error('Download cancelled'));
             });
-        });
-    }
-
-    /**
-     * Extracts a zip file to the destination directory
-     */
-    private async extractZip(zipPath: string, destination: string): Promise<void> {
-        // Ensure destination directory exists
-        fs.mkdirSync(destination, { recursive: true });
-
-        return new Promise((resolve, reject) => {
-            try {
-                const zip = new AdmZip(zipPath);
-                zip.extractAllTo(destination, true);
-                resolve();
-            } catch (error) {
-                reject(error);
-            }
         });
     }
 
@@ -954,29 +905,6 @@ export class BackendDownloader {
     }
 
     private terminateRunningBackendProcesses(storagePath: string): void {
-        const normalizedStoragePath = storagePath.replace(/\\/g, '\\\\');
-
-        if (os.platform() === 'win32') {
-            const script = [
-                `$storage = '${normalizedStoragePath}'`,
-                '$procs = Get-CimInstance Win32_Process | Where-Object {',
-                "  $_.Name -eq 'neurotrace.exe' -and",
-                '  $_.ExecutablePath -and',
-                '  $_.ExecutablePath.StartsWith($storage, [System.StringComparison]::OrdinalIgnoreCase)',
-                '}',
-                'foreach ($proc in $procs) {',
-                '  try { Stop-Process -Id $proc.ProcessId -Force -ErrorAction Stop } catch {}',
-                '}',
-            ].join('\n');
-
-            spawnSync('powershell.exe', ['-NoProfile', '-Command', script], { encoding: 'utf8' });
-            Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 500);
-            return;
-        }
-
-        const escapedStoragePath = storagePath.replace(/'/g, `'\\''`);
-        const unixCommand = `ps -ax -o pid=,command= | grep -F '${escapedStoragePath}' | grep -F 'neurotrace' | grep -v grep | awk '{print $1}' | xargs -r kill -9`;
-        spawnSync('bash', ['-lc', unixCommand], { encoding: 'utf8' });
-        Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 500);
+        stopInstalledBackends(storagePath);
     }
 }

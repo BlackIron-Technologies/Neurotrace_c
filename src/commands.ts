@@ -585,7 +585,7 @@ export async function openAdvancedCommand(context: vscode.ExtensionContext, setG
  */
 export async function redownloadBackendCommand(context: vscode.ExtensionContext, serverManager: PythonServerManager) {
     const confirmation = await vscode.window.showWarningMessage(
-        'This will remove and re-download the NeuroTrace backend (~300-450 MB). The extension will restart. Continue?',
+        'This will download and verify the NeuroTrace backend before replacing the installed copy. The extension will restart. Continue?',
         'Yes, Re-download',
         'Cancel'
     );
@@ -599,15 +599,8 @@ export async function redownloadBackendCommand(context: vscode.ExtensionContext,
         const { BackendDownloader } = await import('./BackendDownloader.js');
         const downloader = new BackendDownloader(context);
 
-        // Stop the server first and wait for a clean shutdown so the executable
-        // can be removed safely on Windows.
-        await serverManager.stopServerAndWait('update');
-
-        // Remove existing backend
-        await downloader.removeBackend({ silent: true });
-
         // Re-download
-        const downloadedPath = await downloader.downloadBackend();
+        const downloadedPath = await downloader.downloadBackend(() => serverManager.stopServerAndWait('update'));
 
         if (!downloadedPath) {
             throw new Error('Download failed or was cancelled');

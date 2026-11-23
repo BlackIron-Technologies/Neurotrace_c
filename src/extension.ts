@@ -140,12 +140,8 @@ export async function activate(context: vscode.ExtensionContext) {
 			// Update backend silently in the background without blocking activation
 			(async () => {
 				try {
-					await serverManager.stopServerAndWait('update');
 					const isLegacyMigration = backendDownloader.isUsingLegacyBackendStorage();
-					if (!isLegacyMigration) {
-						await backendDownloader.removeBackend({ silent: true });
-					}
-					const newBackendPath = await backendDownloader.downloadBackendSilently();
+					const newBackendPath = await backendDownloader.downloadBackendSilently(() => serverManager.stopServerAndWait('update'));
 
 					if (newBackendPath) {
 						if (isLegacyMigration) {
@@ -183,7 +179,8 @@ export async function activate(context: vscode.ExtensionContext) {
 					);
 					if (choice === 'Retry Download') {
 						// Use the user-initiated download with progress notification
-						await backendDownloader.downloadBackend();
+						const retriedPath = await backendDownloader.downloadBackend(() => serverManager.stopServerAndWait('update'));
+						if (!retriedPath) { throw new Error('Backend download failed or was cancelled; the previous files were kept.'); }
 						try {
 							backendDownloader.cleanupLegacyBackend({ silent: true });
 						} catch (cleanupError) {
@@ -445,7 +442,7 @@ export async function activate(context: vscode.ExtensionContext) {
 				// Notify UI that download is starting
 				sidebarProvider.setDownloadStatus('downloading');
 
-				const backendPath = await backendDownloader.downloadBackend();
+				const backendPath = await backendDownloader.downloadBackend(() => serverManager.stopServerAndWait('update'));
 
 				if (backendPath) {
 					// Backend downloaded successfully
