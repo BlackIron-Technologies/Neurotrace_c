@@ -2,6 +2,15 @@
 
 All notable changes to the "neurotrace" extension will be documented in this file.
 
+## [1.3.5] - 2026-11-23
+
+### Fixed
+- Verify sync servers using system and bundled certificate roots, including macOS installations without Python.
+- Retry TLS connection failures instead of stopping sync with an incorrect repository mismatch error.
+
+### Changed
+- Require backend 1.3.5 so existing installations receive the TLS correction.
+
 ## [1.2.5] - 2026-04-09
 
 ### Added

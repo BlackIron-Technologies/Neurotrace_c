@@ -11,7 +11,7 @@ import keyring
 
 from .tls import client_context
 
-USER_AGENT = "NeuroTrace/1.3.4"
+USER_AGENT = "NeuroTrace/1.3.5"
 
 
 def normalize_url(value):
