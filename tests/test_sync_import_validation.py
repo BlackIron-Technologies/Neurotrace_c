@@ -41,7 +41,7 @@ class LegacyValidationTests(unittest.TestCase):
             result = replica.initialize(snapshot, publish=True, path_policy='remap', type_map={'finding': 'insight'})
             saved = dict(replica.conn.execute('SELECT * FROM thoughts').fetchone())
             self.assertEqual(saved['type'], 'insight')
-            self.assertEqual(Path(saved['file_path']), self.root / 'src/file.ts')
+            self.assertEqual(Path(saved['file_path']), (self.root / 'src/file.ts').resolve())
             backup = json.loads(replica.conn.execute('SELECT thoughts FROM sync_import_backups WHERE id=?', (result['backup_id'],)).fetchone()[0])
             self.assertEqual(backup[0]['file_path'], self.row['file_path'])
             self.assertEqual(backup[0]['type'], 'finding')
